@@ -80,6 +80,8 @@ This is the process. I will call it [PPAP](https://www.youtube.com/watch?v=Ct6BU
 - Photo edit
 - Add filters if needed
 - Prepare presentation and description
-  16 - Publish / Deliver
-- Click publish in your website, social media, Github (this repository), Artstation
+
+16 - Publish/Deliver
+
+- Click publish on your website, social media, Github (this repository), Artstation
 - Deliver by mail if it's a physical copy or print for a client
