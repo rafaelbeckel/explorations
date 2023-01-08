@@ -10,6 +10,7 @@ struct Model {
     margin: f32,
     space: f32,
     animation_phase: f32,
+    rotation_animation_phase: f32,
 }
 
 fn main() {
@@ -26,33 +27,31 @@ fn model(app: &App) -> Model {
     let margin = 16.0;
     let space = 2.0;
 
-    let num_colors: i32 = 180;
+    let num_colors: i32 = 360;
     let mut warm_palette: Vec<Hsv> = (0..num_colors)
         .map(|i| {
             Hsv::new(
                 map_range(i, 0, num_colors - 1, 1.0, 180.0),
-                map_range(i, 0, num_colors - 1, 0.5, 0.5),
-                map_range(i, 0, num_colors - 1, 0.8, 0.8),
+                map_range(i, 0, num_colors - 1, 0.6, 0.8),
+                map_range(i, 0, num_colors - 1, 0.6, 0.8),
             )
         })
         .collect();
 
     let inverted_warm_palette: Vec<Hsv> = warm_palette.clone().into_iter().rev().collect();
-
     warm_palette.extend(inverted_warm_palette);
 
     let mut cool_palette: Vec<Hsv> = (0..num_colors)
         .map(|i| {
             Hsv::new(
                 map_range(i, 0, num_colors - 1, 181.0, 360.0),
-                map_range(i, 0, num_colors - 1, 0.5, 0.5),
-                map_range(i, 0, num_colors - 1, 0.8, 0.8),
+                map_range(i, 0, num_colors - 1, 0.6, 0.8),
+                map_range(i, 0, num_colors - 1, 0.6, 0.8),
             )
         })
         .collect();
 
-    let inverted_cool_palette: Vec<Hsv> = warm_palette.clone().into_iter().rev().collect();
-
+    let inverted_cool_palette: Vec<Hsv> = cool_palette.clone().into_iter().rev().collect();
     cool_palette.extend(inverted_cool_palette);
 
     let n_cols = (window_size.x / rectangle_size) as i32;
@@ -77,6 +76,7 @@ fn model(app: &App) -> Model {
         margin,
         space,
         animation_phase: 0.0,
+        rotation_animation_phase: 0.0,
     }
 }
 
@@ -91,6 +91,11 @@ fn model(app: &App) -> Model {
 
 fn update(app: &App, model: &mut Model, _update: Update) {
     model.animation_phase = (app.time).sin() / 2.0 + 0.5;
+
+    model.rotation_animation_phase += app.duration.since_prev_update.as_secs_f32() * 0.5;
+    if model.rotation_animation_phase > 1.0 {
+        model.rotation_animation_phase -= 1.0;
+    }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -101,10 +106,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
         let cool_color = model.cool_palette[i % model.cool_palette.len()];
 
         let color = warm_color.mix(&cool_color, model.animation_phase);
-        let x = rect.x();
-        let y = rect.y();
-        let w = rect.w();
-        let h = rect.h();
+        let x = rect.x() * model.animation_phase * 2.0 + rect.x();
+        let y = rect.y() * model.animation_phase * 2.0 + rect.y();
+        let w = rect.w() * model.animation_phase * 4.0 + 16.0;
+        let h = rect.h() * model.animation_phase * 4.0 + 16.0;
 
         draw.rect()
             .color(Hsv::new(
@@ -113,8 +118,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
                 color.value,
             ))
             .x_y(x, y)
-            .w_h(w, h);
+            .w_h(w, h)
+            .rotate(model.rotation_animation_phase * TAU + i as f32 * 0.1);
     }
 
+    draw.background().color(BLACK);
     draw.to_frame(app, &frame).unwrap();
 }
