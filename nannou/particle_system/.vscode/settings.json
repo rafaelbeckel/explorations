@@ -4,7 +4,11 @@
             "terminal.ansiBlue": "#1c7bc9"
         },
         "activityBar.background": "#AEADF0",
+        "activityBar.foreground": "#FFF",
+        "activityBar.inactiveForeground": "#0F0E4F",
+        "activityBarBadge.background": "#dbeb80",
         "titleBar.activeBackground": "#D0D0F7",
-        "titleBar.activeForeground": "#0F0E4F"
+        "titleBar.activeForeground": "#0F0E4F",
+        "titleBar.inactiveBackground": "#D0D0F7",
     }
 }
