@@ -144,11 +144,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let dt = update.since_last.as_secs_f32();
     let time = update.since_start.as_secs_f32();
 
-    let force = Vec3::new(
-        time.cos() * random_range(-1.0, 1.0),
-        time.cos() * random_range(-1.0, 1.0),
-        0.0,
-    );
+    let force = Vec3::new(time.cos(), time.cos(), time.cos());
 
     model.particle_system.update(dt, force);
 }
@@ -159,7 +155,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     for particle in &model.particle_system.particles {
         draw.ellipse()
             .color(particle.color)
-            .radius(2.0 + (particle.position.x + particle.position.y) / 5.0)
+            .radius(2.0 + particle.velocity.z / 5.0)
             .x_y(particle.position.x, particle.position.y);
     }
 
