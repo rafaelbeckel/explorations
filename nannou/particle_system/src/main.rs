@@ -58,7 +58,11 @@ impl Particle {
     }
 
     fn update(&mut self, dt: f32, force: Vec3) {
-        self.velocity += force * dt;
+        // change the force to attract to the center
+        let center = Point3::new(0.0, 0.0, 0.0);
+        let force = force + (center - self.position).normalize();
+
+        self.velocity += force * dt * 100.0;
         self.position += self.velocity * dt;
     }
 
@@ -94,8 +98,6 @@ struct Model {
     _window: WindowId,
     window_size: Vec2,
     particle_system: ParticleSystem,
-    time: f32,
-    dt: f32,
 }
 
 fn main() {
@@ -113,7 +115,7 @@ fn model(app: &App) -> Model {
         let i = i as f32;
         let num_particles = num_particles as f32;
         let angle = i / num_particles * TAU;
-        let pos = center + Point3::new(angle.cos(), angle.sin(), 0.0) * 100.0;
+        let pos = center + Point3::new(angle.cos(), angle.sin(), 0.0) * i;
         let vel = Vec3::new(0.0, 0.0, 0.0);
         let color = hsl(i / num_particles, 0.8, 0.5).into();
         let radius = 1.0 + i / num_particles * 10.0;
@@ -126,8 +128,6 @@ fn model(app: &App) -> Model {
         _window: window,
         window_size,
         particle_system,
-        time: 0.0,
-        dt: 0.0,
     }
 }
 
@@ -144,10 +144,11 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let dt = update.since_last.as_secs_f32();
     let time = update.since_start.as_secs_f32();
 
-    model.time = time * 2.0;
-    model.dt = dt;
-
-    let force = Vec3::new(time.cos() * 20.0, 0.0, 0.0) * 2.0;
+    let force = Vec3::new(
+        time.cos() * random_range(-1.0, 1.0),
+        time.cos() * random_range(-1.0, 1.0),
+        0.0,
+    );
 
     model.particle_system.update(dt, force);
 }
@@ -158,7 +159,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     for particle in &model.particle_system.particles {
         draw.ellipse()
             .color(particle.color)
-            .radius(particle.radius)
+            .radius(2.0 + (particle.position.x + particle.position.y) / 5.0)
             .x_y(particle.position.x, particle.position.y);
     }
 
