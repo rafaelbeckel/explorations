@@ -57,18 +57,19 @@ impl Particle {
         }
     }
 
-    fn update(&mut self, dt: f32, force: Vec3) {
+    fn update(&mut self, dt: f32) {
         // change the force to attract to the center
         let center = Point3::new(0.0, 0.0, 0.0);
-        let force = force + (center - self.position).normalize();
+        let force = (center - self.position).normalize();
 
         self.velocity += force * dt * 100.0;
         self.position += self.velocity * dt;
+        self.radius = 10.0 + self.position.z / 50.0;
     }
 
     fn destroy(&mut self) {
         self.color = rgb(0.0, 0.0, 0.0);
-        self.radius = 0.0;
+        self.radius = 2.0 + self.velocity.z / 5.0;
     }
 }
 
@@ -79,9 +80,9 @@ impl ParticleSystem {
         }
     }
 
-    fn update(&mut self, dt: f32, force: Vec3) {
+    fn update(&mut self, dt: f32) {
         for particle in self.particles.iter_mut() {
-            particle.update(dt, force);
+            particle.update(dt);
         }
     }
 
@@ -115,8 +116,8 @@ fn model(app: &App) -> Model {
         let i = i as f32;
         let num_particles = num_particles as f32;
         let angle = i / num_particles * TAU;
-        let pos = center + Point3::new(angle.cos(), angle.sin(), 0.0) * i;
-        let vel = Vec3::new(0.0, 0.0, 0.0);
+        let pos = center + Point3::new(angle.cos(), angle.sin(), angle) * i;
+        let vel = Vec3::new(i as f32, -i as f32, 0.0);
         let color = hsl(i / num_particles, 0.8, 0.5).into();
         let radius = 1.0 + i / num_particles * 10.0;
 
@@ -144,9 +145,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let dt = update.since_last.as_secs_f32();
     let time = update.since_start.as_secs_f32();
 
-    let force = Vec3::new(time.cos(), time.cos(), time.cos());
+    //let force = Vec3::new(time.cos(), time.cos(), time.cos());
 
-    model.particle_system.update(dt, force);
+    model.particle_system.update(dt);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -155,7 +156,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     for particle in &model.particle_system.particles {
         draw.ellipse()
             .color(particle.color)
-            .radius(2.0 + particle.velocity.z / 5.0)
+            .radius(particle.radius)
             .x_y(particle.position.x, particle.position.y);
     }
 
