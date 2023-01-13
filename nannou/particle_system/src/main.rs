@@ -111,13 +111,13 @@ fn model(app: &App) -> Model {
 
     let mut particle_system = ParticleSystem::new();
     let center = Point3::new(0.0, 0.0, 0.0);
-    let num_particles = 500;
+    let num_particles = 2000;
     for i in 0..num_particles {
         let i = i as f32;
         let num_particles = num_particles as f32;
         let angle = i / num_particles * TAU;
         let pos = center + Point3::new(angle.cos(), angle.sin(), angle) * i;
-        let vel = Vec3::new(i as f32, -i as f32, 0.0);
+        let vel = Vec3::new(i / 10.0 as f32, -i / 10.0 as f32, angle);
         let color = hsl(i / num_particles, 0.8, 0.5).into();
         let radius = 1.0 + i / num_particles * 10.0;
 
