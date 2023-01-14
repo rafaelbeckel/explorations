@@ -1,0 +1,11 @@
+[package]
+name = "particle_system_1"
+description = "A simple mesmerizing particle system. The first of many to come."
+authors = ["Rafael Beckel <beckel+nannou@vista.art>"]
+version = "1.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nannou = "0.18"
