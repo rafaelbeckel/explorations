@@ -1,22 +1,22 @@
 # Rust Borrowed Types
 
-**January 6, 2023**
+## January 6, 2023
 
 This chat was inspired by this article about [using borrowed types in function arguments](https://rust-unofficial.github.io/patterns/idioms/coercion-arguments.html) and this Stack Overflow answer about [the same topic](https://stackoverflow.com/questions/40006219/why-is-it-discouraged-to-accept-a-reference-to-a-string-string-vec-vec-o).
 
 This was an interesting chat and an example on how I leveraged the statistical model of ChatGPT to confirm my understanding of a new topic.
 
-#### Context:
+### Context
 
 I read the article months ago, but I didn't had first-hand experience with Rust at that time.
 
 After I started experimenting with the language a couple weeks ago, I found myself using a lot of `&String` and `&Vec` as function arguments, and it caused a set of code smells outside of it.
 
-Suddenly, the article was relatable, and I went to re-read it. I also found the Stack Overflow answer, which was a great complement to the article.
+Suddenly, the article felt relatable. So I went to re-read it. I also found the Stack Overflow answer, which was a great complement to the article.
 
 Then, I went to ChatGPT to check how well it could explain the topic and reveal missing spots.
 
-This chat was the result:
+### The chat
 
 ---
 
@@ -192,7 +192,7 @@ assert_eq!(s.data, "Hello");
 
 ---
 
-#### Let's try a more complex example with a struct containing multiple owned types, and the arguments for the methods accepting the underlying type reference. Explain why it's a good practice, or why not.
+#### Let's try a more complex example with a struct containing multiple owned types, and the arguments for the methods accepting the underlying type reference. Explain why it's a good practice, or why not
 
 Sure! Here is an example of a struct with multiple owned fields and methods that take references to the underlying types as arguments:
 
