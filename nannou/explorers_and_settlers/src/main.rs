@@ -1,6 +1,23 @@
 use nannou::color::*;
 use nannou::prelude::*;
 
+struct Agent {
+    settle: bool,
+}
+
+enum CellState {
+    Empty,
+    Reserved { by: Agent },
+    Filled { by: Agent, times: f32 },
+}
+
+struct Cell {
+    x: f32,
+    y: f32,
+    color: Hsv,
+    state: CellState,
+}
+
 struct Model {
     _window: WindowId,
     window_size: Vec2,
