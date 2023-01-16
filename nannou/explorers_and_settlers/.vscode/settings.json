@@ -1,0 +1,10 @@
+{
+    "workbench.colorCustomizations": {
+        "[Material Pro]": {
+            "terminal.ansiBlue": "#1c7bc9"
+        },
+        "activityBar.background": "#DEAA5B",
+        "titleBar.activeBackground": "#E3B875",
+        "titleBar.activeForeground": "#221707"
+    }
+}
