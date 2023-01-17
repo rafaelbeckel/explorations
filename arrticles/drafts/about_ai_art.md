@@ -7,7 +7,7 @@ Some people are worried that AI will replace artists. I don't think so. When pho
 
 Let's start by saying I do **not** use image-generation tools in my art. A primary driver for my explorations is deep understanding of what I'm drawing or building, and generating images from a prompt steals this experience.
 
-Sometimes I spend my free DALL-E monthly credits to generate some random garbage that nobody will see besides me. It's a personal moodboard of sorts, but less than 1% of my sources of inspiration. I mainly use it for the lulz, like I do by following `r/weirddalle` on Reddit.
+Sometimes I spend my free DALL-E monthly credits to generate some random garbage that nobody will see besides me. It's a personal moodboard of sorts, but less than 1% of my sources of inspiration. I mainly use it for producing funny results with bogus prompts, to reveal biases and test the limits of the system. I also follow `r/weirddalle` on Reddit and Twitter for the lulz.
 
 I don't feel threatened by it at all. Probably because my programming skills is what pay my bills at this moment. However, programmers should be much more worried than artists about AI stealing their jobs. ChatGPT feels much more uncanny to me than DALL-E. Still, its outputs always need some human input to adapt to the actual circumstances of the specific project. The same is true for art.
 
