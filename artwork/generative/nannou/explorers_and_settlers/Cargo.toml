@@ -1,5 +1,7 @@
 [package]
 name = "explorers_and_settlers"
+description = "This simple grid with a random number of agents is inspired by the Conway's Game of Life, but with different rules that represent our main life decisions, like marriage, job change, moving to a new city or country, change career paths, study a new course, etc., and how it shapes us and the people around us."
+authors = ["Rafael Beckel <beckel+nannou@vista.art>"]
 version = "0.1.0"
 edition = "2021"
 
