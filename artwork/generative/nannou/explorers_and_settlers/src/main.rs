@@ -1,3 +1,5 @@
+use std::cell::Ref;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use nannou::color::*;
@@ -7,9 +9,62 @@ struct Agent {
     settle: bool,
 }
 
+impl Agent {
+    fn new() -> Self {
+        Agent { settle: false }
+    }
+}
+
+struct Grid {
+    n_cols: i32,
+    n_rows: i32,
+    cell_size: f32,
+    cell_spacing: f32,
+    cells: Vec<Cell>,
+    cells_map: HashMap<String, usize>,
+}
+
+impl Grid {
+    fn new(n_cols: i32, n_rows: i32, cell_size: f32, cell_spacing: f32) -> Self {
+        let mut cells_map = HashMap::new();
+
+        let cells: Vec<Cell> = (0..n_cols)
+            .flat_map(|col| {
+                (0..n_rows).map(move |row| {
+                    let x =
+                        col as f32 * (cell_size + cell_spacing) - (n_cols as f32 * cell_size / 2.0);
+                    let y =
+                        row as f32 * (cell_size + cell_spacing) - (n_rows as f32 * cell_size / 2.0);
+                    let rect = Rect::from_xy_wh(Vec2::new(x, y), Vec2::new(cell_size, cell_size));
+
+                    Cell::new(row, col, rect)
+                })
+            })
+            .collect();
+
+        for (index, cell) in cells.iter().enumerate() {
+            let key = format!("{}{}", cell.row, cell.col);
+            cells_map.insert(key, index);
+        }
+
+        Grid {
+            n_cols,
+            n_rows,
+            cell_size,
+            cell_spacing,
+            cells,
+            cells_map,
+        }
+    }
+}
+
 enum CellState {
     Empty,
-    Filled { by: Agent, times: f32 },
+    Filled {
+        by: RefCell<Agent>,
+        times: i32,
+        blocked: bool,
+    },
 }
 
 struct Cell {
@@ -17,6 +72,105 @@ struct Cell {
     col: i32,
     rect: Rect,
     state: CellState,
+}
+
+impl Cell {
+    fn new(row: i32, col: i32, rect: Rect) -> Self {
+        Cell {
+            row,
+            col,
+            rect,
+            state: CellState::Empty,
+        }
+    }
+
+    fn get_neighbors(&self, cells_map: &HashMap<String, usize>) -> Vec<usize> {
+        let mut neighbors: Vec<usize> = Vec::new();
+
+        let mut row = self.row;
+        let mut col = self.col;
+
+        // top
+        row -= 1;
+        if row >= 0 {
+            let key = format!("{}{}", row, col);
+            if let Some(index) = cells_map.get(&key) {
+                neighbors.push(*index);
+            }
+        }
+
+        // bottom
+        row += 2;
+        if row < 100 {
+            let key = format!("{}{}", row, col);
+            if let Some(index) = cells_map.get(&key) {
+                neighbors.push(*index);
+            }
+        }
+
+        // left
+        row -= 1;
+        col -= 1;
+        if col >= 0 {
+            let key = format!("{}{}", row, col);
+            if let Some(index) = cells_map.get(&key) {
+                neighbors.push(*index);
+            }
+        }
+
+        // right
+        col += 2;
+        if col < 100 {
+            let key = format!("{}{}", row, col);
+            if let Some(index) = cells_map.get(&key) {
+                neighbors.push(*index);
+            }
+        }
+
+        neighbors
+    }
+
+    fn fill(&mut self, agent: RefCell<Agent>) {
+        // set state to filled or increase N times if it's the same agent
+        match self.state {
+            CellState::Empty => {
+                self.state = CellState::Filled {
+                    by: agent,
+                    times: 1,
+                    blocked: false,
+                }
+            }
+            CellState::Filled {
+                by: _,
+                times,
+                blocked,
+            } => {
+                if !blocked {
+                    self.state = CellState::Filled {
+                        by: agent,
+                        times: times + 1,
+                        blocked: true,
+                    }
+                    // @TODO: check if the RefCell is the same as the one in the state
+                    // } else if by == agent {
+                    //     self.state = CellState::Filled {
+                    //         by,
+                    //         times: times + 1,
+                    //         blocked: false,
+                    //     }
+                }
+            }
+        }
+    }
+
+    fn draw(&self, draw: &Draw, color: Hsv) {
+        let x = self.rect.x();
+        let y = self.rect.y();
+        let w = self.rect.w();
+        let h = self.rect.h();
+
+        draw.rect().color(color).x_y(x, y).w_h(w, h);
+    }
 }
 
 struct Model {
@@ -27,8 +181,7 @@ struct Model {
     cool_palette: Vec<Hsv>,
     muted_warm_palette: Vec<Hsv>,
     muted_cool_palette: Vec<Hsv>,
-    cells: Vec<Cell>,
-    cells_map: HashMap<String, usize>,
+    grid: Grid,
     cell_spacing: f32,
     animation_phase: f32,
     epoch: usize,
@@ -40,44 +193,35 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
+    // Window
     let window = app.new_window().view(view).event(event).build().unwrap();
     let window_size = app.window_rect().wh();
+
+    // Grid
     let cell_size = 16.0; // Set this to the size of each square.
     let cell_spacing = 2.0; // Set this to the space between each square.
-
-    let num_colors: i32 = 360;
-    let warm_palette: Vec<Hsv> = create_pallete(num_colors, 1.0, 180.0, 0.6, 0.8, 0.6, 0.8);
-    let cool_palette: Vec<Hsv> = create_pallete(num_colors, 181.0, 360.0, 0.6, 0.8, 0.6, 0.8);
-    let muted_warm_palette: Vec<Hsv> = create_pallete(num_colors, 1.0, 180.0, 0.0, 0.01, 0.6, 0.8);
-    let muted_cool_palette: Vec<Hsv> =
-        create_pallete(num_colors, 181.0, 360.0, 0.0, 0.01, 0.6, 0.8);
-
     let n_cols = (window_size.x / cell_size) as i32;
     let n_rows = (window_size.y / cell_size) as i32;
-    let mut cells_map = HashMap::new();
-    let mut index: usize = 0;
+    let grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
 
-    let cells: Vec<Cell> = (0..n_cols)
-        .flat_map(|col| {
-            (0..n_rows).map(move |row| {
-                let x = col as f32 * (cell_size + cell_spacing) - (window_size.x / 2.0);
-                let y = row as f32 * (cell_size + cell_spacing) - (window_size.y / 2.0);
-                let rect = Rect::from_xy_wh(Vec2::new(x, y), Vec2::new(cell_size, cell_size));
+    // Color Palettes
+    let num_colors: i32 = 360;
+    let warm_palette: Vec<Hsv> = create_pallete(num_colors, 1.0, 180.0, 0.6, 0.9, 0.6, 0.8);
+    let cool_palette: Vec<Hsv> = create_pallete(num_colors, 181.0, 360.0, 0.6, 0.9, 0.6, 0.8);
+    let muted_warm_palette: Vec<Hsv> = create_pallete(num_colors, 1.0, 180.0, 0.0, 0.1, 0.6, 0.8);
+    let muted_cool_palette: Vec<Hsv> = create_pallete(num_colors, 181.0, 360.0, 0.0, 0.1, 0.6, 0.8);
 
-                Cell {
-                    row,
-                    col,
-                    rect,
-                    state: CellState::Empty,
-                }
-            })
+    // max agents is the number of cells in the grid divided by 10
+    let max_agents = (n_cols * n_rows) / 10;
+
+    //create the agents in random places, but not near each other
+    let mut agents: Vec<Agent> = (0..max_agents)
+        .map(|_| {
+            let mut agent = Agent::new();
+            agent.settle = random::<bool>();
+            agent
         })
         .collect();
-
-    for cell in cells.iter() {
-        cells_map.insert(format!("{}{}", cell.row, cell.col), index);
-        index += 1;
-    }
 
     Model {
         _window: window,
@@ -87,8 +231,7 @@ fn model(app: &App) -> Model {
         cool_palette,
         muted_warm_palette,
         muted_cool_palette,
-        cells,
-        cells_map,
+        grid,
         cell_spacing,
         animation_phase: 0.0,
         epoch: 0,
@@ -128,33 +271,8 @@ fn update_model(model: &mut Model) {
     let n_cols = (window_size.x / cell_size) as i32;
     let n_rows = (window_size.y / cell_size) as i32;
 
-    let mut cells_map = HashMap::new();
-    let mut index: usize = 0;
-
-    let cells: Vec<Cell> = (0..n_cols)
-        .flat_map(|col| {
-            (0..n_rows).map(move |row| {
-                let x = col as f32 * (cell_size + cell_spacing) - (window_size.x / 2.0);
-                let y = row as f32 * (cell_size + cell_spacing) - (window_size.y / 2.0);
-                let rect = Rect::from_xy_wh(Vec2::new(x, y), Vec2::new(cell_size, cell_size));
-
-                Cell {
-                    row,
-                    col,
-                    rect,
-                    state: CellState::Empty,
-                }
-            })
-        })
-        .collect();
-
-    for cell in cells.iter() {
-        cells_map.insert(format!("{}{}", cell.row, cell.col), index);
-        index += 1;
-    }
-
-    model.cells = cells;
-    model.cells_map = cells_map;
+    model.grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
+    // @TODO: update agents
 }
 
 fn event(_app: &App, model: &mut Model, event: WindowEvent) {
@@ -178,19 +296,25 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
-    for (i, cell) in model.cells.iter().enumerate() {
-        let rect = cell.rect;
-        let warm_color;
-        let cool_color;
+    for (i, cell) in model.grid.cells.iter().enumerate() {
+        let mut warm_color;
+        let mut cool_color;
 
         match cell.state {
             CellState::Empty => {
                 warm_color = model.muted_warm_palette[i % model.muted_warm_palette.len()];
                 cool_color = model.muted_cool_palette[i % model.muted_cool_palette.len()];
             }
-            CellState::Filled { by: _, times: _ } => {
+            CellState::Filled {
+                by: _,
+                times,
+                blocked: _,
+            } => {
                 warm_color = model.warm_palette[i % model.warm_palette.len()];
                 cool_color = model.cool_palette[i % model.cool_palette.len()];
+
+                // change intensity based on how many times it's been filled
+                warm_color.saturation = map_range(times, 0, 5, 0.5, 1.0);
             }
             _ => {
                 warm_color = model.warm_palette[i % model.warm_palette.len()];
@@ -200,15 +324,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
         let color = warm_color.mix(&cool_color, model.animation_phase);
 
-        let x = rect.x();
-        let y = rect.y();
-        let w = rect.w();
-        let h = rect.h();
-
-        draw.rect()
-            .color(Hsv::new(color.hue, color.saturation, color.value))
-            .x_y(x, y)
-            .w_h(w, h);
+        cell.draw(&draw, color);
     }
 
     draw.background().color(BLACK);
