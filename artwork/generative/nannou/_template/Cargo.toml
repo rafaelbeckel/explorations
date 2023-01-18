@@ -1,5 +1,7 @@
 [package]
 name = "_template"
+description = "A simple description."
+authors = ["Rafael Beckel <beckel+nannou@vista.art>"]
 version = "0.1.0"
 edition = "2021"
 
