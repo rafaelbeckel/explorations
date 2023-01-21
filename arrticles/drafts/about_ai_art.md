@@ -1,12 +1,11 @@
-!!! ! DRAFT
+# DRAFT
 
 References to read before finishing this article:
-- https://www.wired.com/story/picture-limitless-creativity-ai-image-generators/
-- https://www.mdpi.com/2076-0752/7/2/18
 
+- <https://www.wired.com/story/picture-limitless-creativity-ai-image-generators/>
+- <https://www.mdpi.com/2076-0752/7/2/18>
 
 Some people are worried that AI will replace artists. I don't think so. When photography was invented, many artists feared it would replace their work. But it didn't. It became a new medium, and artists adapted to it by using it to create new kinds of art. The same will happen with AI art. It will be a new medium, and artists will adapt to it by using it to create new kinds of art.
-
 
 ## How I use AI in my Art
 
@@ -18,9 +17,6 @@ I don't feel threatened by it at all. Probably because my programming skills is 
 
 [to be completed]
 
-
-
-
 ## AI Art VS Generative Art
 
 While AI Art is a subset of Generative Art, Generative Art is not necessarily AI Art.
@@ -30,8 +26,6 @@ Generative art is a broad term that encompasses a wide range of techniques and s
 While AI can be seen as a threat to many, it cannot replace the human element that is at the heart of truly creative art.
 
 When photography was invented, many artists feared it would replace their work. But it didn't. It became a new medium, and artists adapted to it by using it to create new kinds of art. The same will happen with AI art. It will be a new medium, and artists will adapt to it by using it to create new kinds of art.
-
-
 
 ------
 
