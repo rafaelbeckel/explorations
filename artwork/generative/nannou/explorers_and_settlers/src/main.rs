@@ -1,4 +1,3 @@
-use std::cell::Ref;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -6,12 +5,16 @@ use nannou::color::*;
 use nannou::prelude::*;
 
 struct Agent {
+    position: Vec2,
     settle: bool,
 }
 
 impl Agent {
-    fn new() -> Self {
-        Agent { settle: false }
+    fn new(position: Vec2) -> Self {
+        Agent {
+            position,
+            settle: false,
+        }
     }
 }
 
@@ -55,6 +58,10 @@ impl Grid {
             cells,
             cells_map,
         }
+    }
+
+    fn fill(&mut self, index: usize, agent: RefCell<Agent>) {
+        self.cells[index].fill(agent);
     }
 }
 
@@ -215,9 +222,12 @@ fn model(app: &App) -> Model {
     let max_agents = (n_cols * n_rows) / 10;
 
     //create the agents in random places, but not near each other
-    let mut agents: Vec<Agent> = (0..max_agents)
+    let agents: Vec<Agent> = (0..max_agents)
         .map(|_| {
-            let mut agent = Agent::new();
+            let mut agent = Agent::new(Vec2::new(
+                random_range(0, n_cols) as f32,
+                random_range(0, n_rows) as f32,
+            ));
             agent.settle = random::<bool>();
             agent
         })
@@ -235,7 +245,7 @@ fn model(app: &App) -> Model {
         cell_spacing,
         animation_phase: 0.0,
         epoch: 0,
-        agents: vec![Agent { settle: false }],
+        agents,
     }
 }
 
@@ -272,7 +282,20 @@ fn update_model(model: &mut Model) {
     let n_rows = (window_size.y / cell_size) as i32;
 
     model.grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
-    // @TODO: update agents
+
+    let max_agents = (n_cols * n_rows) / 10;
+    let agents: Vec<Agent> = (0..max_agents)
+        .map(|_| {
+            let mut agent = Agent::new(Vec2::new(
+                random_range(0, n_cols) as f32,
+                random_range(0, n_rows) as f32,
+            ));
+            agent.settle = random::<bool>();
+            agent
+        })
+        .collect();
+
+    model.agents = agents;
 }
 
 fn event(_app: &App, model: &mut Model, event: WindowEvent) {
@@ -298,7 +321,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     for (i, cell) in model.grid.cells.iter().enumerate() {
         let mut warm_color;
-        let mut cool_color;
+        let cool_color;
 
         match cell.state {
             CellState::Empty => {
@@ -315,10 +338,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
                 // change intensity based on how many times it's been filled
                 warm_color.saturation = map_range(times, 0, 5, 0.5, 1.0);
-            }
-            _ => {
-                warm_color = model.warm_palette[i % model.warm_palette.len()];
-                cool_color = model.cool_palette[i % model.cool_palette.len()];
             }
         }
 
