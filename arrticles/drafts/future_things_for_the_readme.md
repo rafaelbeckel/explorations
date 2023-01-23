@@ -1,8 +1,8 @@
-!!! ! DRAFT
+# DRAFT
 
 [insert below Artist statement and musings about AI]
 
-# Topics, Projects and Tools
+## Topics, Projects and Tools
 
 - Programming languages: I am particularly interested in [Rust](https://www.rust-lang.org/), a systems programming language known for its performance and safety features.
 - Creative coding: I enjoy using frameworks such as [Nannou](https://nannou.cc/), [P5.js](https://p5js.org/), and [Three.js](https://threejs.org/) to create interactive and generative artworks.
@@ -11,8 +11,8 @@
 
 [To mention other programming languages I have used or learned in the past]
 
-
 [to expand]
+
 - Articles
 - Code
 - Projects
