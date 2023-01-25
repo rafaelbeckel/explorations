@@ -1,24 +1,18 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-
 use nannou::prelude::*;
 
 use crate::agent::Agent;
 use crate::cell::Cell;
 
 pub struct Grid {
-    pub n_cols: i32,
-    pub n_rows: i32,
+    pub n_cols: usize,
+    pub n_rows: usize,
     pub cell_size: f32,
     pub cell_spacing: f32,
     pub cells: Vec<Cell>,
-    pub cells_map: HashMap<String, usize>,
 }
 
 impl Grid {
-    pub fn new(n_cols: i32, n_rows: i32, cell_size: f32, cell_spacing: f32) -> Self {
-        let mut cells_map = HashMap::new();
-
+    pub fn new(n_cols: usize, n_rows: usize, cell_size: f32, cell_spacing: f32) -> Self {
         let cells: Vec<Cell> = (0..n_cols)
             .flat_map(|col| {
                 (0..n_rows).map(move |row| {
@@ -33,22 +27,18 @@ impl Grid {
             })
             .collect();
 
-        for (index, cell) in cells.iter().enumerate() {
-            let key = format!("{}{}", cell.row, cell.col);
-            cells_map.insert(key, index);
-        }
-
         Grid {
             n_cols,
             n_rows,
             cell_size,
             cell_spacing,
             cells,
-            cells_map,
         }
     }
 
-    pub fn fill(&mut self, index: usize, agent: RefCell<Agent>) {
+    pub fn fill(&mut self, row: usize, column: usize, agent: &Agent) {
+        let index = row * self.n_cols + column;
+
         self.cells[index].fill(agent);
     }
 }

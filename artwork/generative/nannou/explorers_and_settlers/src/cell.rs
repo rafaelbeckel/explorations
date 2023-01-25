@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 use nannou::prelude::*;
@@ -8,21 +7,21 @@ use crate::agent::Agent;
 pub enum CellState {
     Empty,
     Filled {
-        by: RefCell<Agent>,
+        by: String,
         times: i32,
         blocked: bool,
     },
 }
 
 pub struct Cell {
-    pub row: i32,
-    pub col: i32,
+    pub row: usize,
+    pub col: usize,
     pub rect: Rect,
     pub state: CellState,
 }
 
 impl Cell {
-    pub fn new(row: i32, col: i32, rect: Rect) -> Self {
+    pub fn new(row: usize, col: usize, rect: Rect) -> Self {
         Cell {
             row,
             col,
@@ -77,34 +76,33 @@ impl Cell {
         neighbors
     }
 
-    pub fn fill(&mut self, agent: RefCell<Agent>) {
-        // set state to filled or increase N times if it's the same agent
-        match self.state {
-            CellState::Empty => {
-                self.state = CellState::Filled {
-                    by: agent,
-                    times: 1,
-                    blocked: false,
-                }
-            }
-            CellState::Filled {
-                by: _,
-                times,
-                blocked,
-            } => {
-                if !blocked {
-                    self.state = CellState::Filled {
-                        by: agent,
+    pub fn fill(&mut self, agent: &Agent) {
+        self.state = match &self.state {
+            CellState::Empty => CellState::Filled {
+                by: agent.id.clone(),
+                times: 1,
+                blocked: false,
+            },
+            CellState::Filled { by, times, blocked } => {
+                let same_agent = by.eq(&agent.id);
+                if !blocked && same_agent && times.clone() < 6 {
+                    CellState::Filled {
+                        by: agent.id.clone(),
                         times: times + 1,
+                        blocked: false,
+                    }
+                } else if same_agent {
+                    CellState::Filled {
+                        by: agent.id.clone(),
+                        times: times.clone(),
                         blocked: true,
                     }
-                    // @TODO: check if the RefCell is the same as the one in the state
-                    // } else if by == agent {
-                    //     self.state = CellState::Filled {
-                    //         by,
-                    //         times: times + 1,
-                    //         blocked: false,
-                    //     }
+                } else {
+                    CellState::Filled {
+                        by: by.clone(),
+                        times: times.clone(),
+                        blocked: blocked.clone(),
+                    }
                 }
             }
         }

@@ -37,9 +37,9 @@ fn model(app: &App) -> Model {
     // Grid
     let cell_size = 16.0; // Set this to the size of each square.
     let cell_spacing = 2.0; // Set this to the space between each square.
-    let n_cols = (window_size.x / cell_size) as i32;
-    let n_rows = (window_size.y / cell_size) as i32;
-    let grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
+    let n_cols = (window_size.x / cell_size) as usize;
+    let n_rows = (window_size.y / cell_size) as usize;
+    let mut grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
 
     // Color Palettes
     let num_colors: i32 = 360;
@@ -51,14 +51,16 @@ fn model(app: &App) -> Model {
     // max agents is the number of cells in the grid divided by 10
     let max_agents = (n_cols * n_rows) / 10;
 
-    //create the agents in random places, but not near each other
+    // create the agents in random places
     let agents: Vec<Agent> = (0..max_agents)
         .map(|_| {
-            let mut agent = Agent::new(Vec2::new(
-                random_range(0, n_cols) as f32,
-                random_range(0, n_rows) as f32,
-            ));
+            let row = random_range(0, n_rows);
+            let col = random_range(0, n_cols);
+            let mut agent = Agent::new(Vec2::new(row as f32, col as f32));
             agent.settle = random::<bool>();
+
+            grid.fill(row, col, &agent);
+
             agent
         })
         .collect();
@@ -108,19 +110,24 @@ fn update_model(model: &mut Model) {
     let window_size = model.window_size;
     let cell_size = model.cell_size; // Set this to the size of each square in pixels.
     let cell_spacing = model.cell_spacing;
-    let n_cols = (window_size.x / cell_size) as i32;
-    let n_rows = (window_size.y / cell_size) as i32;
+    let n_cols = (window_size.x / cell_size) as usize;
+    let n_rows = (window_size.y / cell_size) as usize;
 
     model.grid = Grid::new(n_cols, n_rows, cell_size, cell_spacing);
 
+    // max agents is the number of cells in the grid divided by 10
     let max_agents = (n_cols * n_rows) / 10;
+
+    // create the agents in random places
     let agents: Vec<Agent> = (0..max_agents)
         .map(|_| {
-            let mut agent = Agent::new(Vec2::new(
-                random_range(0, n_cols) as f32,
-                random_range(0, n_rows) as f32,
-            ));
+            let row = random_range(0, n_rows);
+            let col = random_range(0, n_cols);
+            let mut agent = Agent::new(Vec2::new(row as f32, col as f32));
             agent.settle = random::<bool>();
+
+            model.grid.fill(row, col, &agent);
+
             agent
         })
         .collect();
