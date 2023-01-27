@@ -1,165 +1,82 @@
-use nannou::color::*;
-use nannou::prelude::*;
+use vulkano::device::{Device, DeviceCreateInfo, Features, QueueCreateInfo};
+use vulkano::instance::{Instance, InstanceCreateInfo};
+use vulkano::VulkanLibrary;
 
-// struct Cylinder {
-//     length: f32,
-//     radius: f32,
-//     volume: f32,
-//     rotational_velocity: f32,
+// Struct to initialize the Vulkan instance
+// We use the default in our example, but it's possible to customize it
+//
+// pub struct InstanceCreateInfo {
+//     pub application_name: Option<String>,
+//     pub application_version: Version,
+//     pub enabled_extensions: InstanceExtensions,
+//     pub enabled_layers: Vec<String>,
+//     pub engine_name: Option<String>,
+//     pub engine_version: Version,
+//     pub max_api_version: Option<Version>,
+//     pub enumerate_portability: bool,
+//     pub _ne: NonExhaustive,
 // }
-
-// struct Fluid {
-//     particles: Vec<Particle>,
-//     particles_count: usize,
-//     t0_particle_count: usize,
-//     steady_particle_count: usize,
-//     average_particle_concentration: f32,
-//     mean_interparticle_separation: f32,
-//     gravity: f32,
-//     flow_based_reynolds_number: f32,
-//     particle_based_reynolds_number: f32,
-//     viscosity: f32,
-//     density: f32,
-//     kinematic_viscosity: f32,
-// }
-
-// To implement:
-// G Green’s function for the Stokes equation
-
-struct Particle {
-    position: Point3,
-    velocity: Vec3,
-    color: Rgb,
-    radius: f32,
-    // settling_velocity: Vec3,
-    // floating_velocity: Vec3,
-    // radial_velocity: Vec3,
-    // angular_velocity: Vec3,
-    // surface: f32,
-    // volume: f32,
-    // mass: f32,
-    // buoyancy_corrected_mass: f32,
-    // steady: bool,
-    // density: f32,
-}
-
-struct ParticleSystem {
-    particles: Vec<Particle>,
-}
-
-impl Particle {
-    fn new(position: Point3, velocity: Vec3, color: Rgb, radius: f32) -> Self {
-        Particle {
-            position,
-            velocity,
-            color,
-            radius,
-        }
-    }
-
-    fn update(&mut self, dt: f32) {
-        // change the force to attract to the center
-        let center = Point3::new(0.0, 0.0, 0.0);
-        let force = (center - self.position).normalize();
-
-        self.velocity += force * dt * 100.0;
-        self.position += self.velocity * dt;
-        self.radius = 10.0 + self.position.z / 50.0;
-    }
-
-    fn destroy(&mut self) {
-        self.color = rgb(0.0, 0.0, 0.0);
-        self.radius = 2.0 + self.velocity.z / 5.0;
-    }
-}
-
-impl ParticleSystem {
-    fn new() -> Self {
-        ParticleSystem {
-            particles: Vec::new(),
-        }
-    }
-
-    fn update(&mut self, dt: f32) {
-        for particle in self.particles.iter_mut() {
-            particle.update(dt);
-        }
-    }
-
-    fn add_particle(&mut self, particle: Particle) {
-        self.particles.push(particle);
-    }
-
-    fn remove_particle(&mut self, index: usize) {
-        self.particles.remove(index);
-    }
-}
-
-struct Model {
-    _window: WindowId,
-    window_size: Vec2,
-    particle_system: ParticleSystem,
-}
 
 fn main() {
-    nannou::app(model).update(update).run();
-}
+    let library = VulkanLibrary::new().expect("no local Vulkan library");
 
-fn model(app: &App) -> Model {
-    let window = app.new_window().view(view).event(event).build().unwrap();
-    let window_size = app.window_rect().wh();
+    // Create the Vulkan instance with default values
+    let instance =
+        Instance::new(library, InstanceCreateInfo::default()).expect("failed to create instance");
 
-    let mut particle_system = ParticleSystem::new();
-    let center = Point3::new(0.0, 0.0, 0.0);
-    let num_particles = 2000;
-    for i in 0..num_particles {
-        let i = i as f32;
-        let num_particles = num_particles as f32;
-        let angle = i / num_particles * TAU;
-        let pos = center + Point3::new(angle.cos(), angle.sin(), angle) * i;
-        let vel = Vec3::new(i / 10.0 as f32, -i / 10.0 as f32, angle);
-        let color = hsl(i / num_particles, 0.8, 0.5).into();
-        let radius = 1.0 + i / num_particles * 10.0;
+    // The machine may have multiple devices that support Vulkan. Here we just get the first one from our instance.
+    let physical = instance
+        .enumerate_physical_devices()
+        .expect("could not enumerate devices")
+        .next()
+        .expect("no devices available");
 
-        let particle = Particle::new(pos, vel, color, radius);
-        particle_system.add_particle(particle);
+    // Devices:
+    // Initialization isn't finished yet.
+    // Before being able to do anything, we have to create a device.
+    //
+    // A device is an object that represents an open channel of communication with a physical device,
+    // and it is probably the most important object of the Vulkan API.
+
+    // Queues and Queue Families:
+    // Just like how it's possible to use multiple threads in your program running on the CPU,
+    // it's also possible to run multiple operations in parallel on the GPU of your graphics card.
+    // The Vulkan equivalent of a CPU thread is a queue. Queues are grouped by queue families.
+
+    // Enumerates the queue family from our physical device:
+    for family in physical.queue_family_properties() {
+        println!(
+            "Found a queue family with {:?} queue(s)",
+            family.queue_count
+        );
     }
 
-    Model {
-        _window: window,
-        window_size,
-        particle_system,
-    }
-}
+    // We can now find the index of the first queue family that supports graphics.
+    // Queue families can be for example for graphics, compute, transfer, sparse binding, etc.
+    // Learn more about Queue Families in http://vulkan.gpuinfo.org
+    let queue_family_index = physical
+        .queue_family_properties()
+        .iter()
+        .enumerate()
+        .position(|(_, q)| q.queue_flags.graphics)
+        .expect("couldn't find a graphical queue family") as u32;
 
-fn event(_app: &App, model: &mut Model, event: WindowEvent) {
-    match event {
-        Resized(size) => {
-            model.window_size = size;
-        }
-        _ => (),
-    }
-}
+    // Creating a device returns two things: the device itself,
+    // and also a list of queue objects that will later allow us to submit operations.
+    let (device, mut queues) = Device::new(
+        physical,
+        DeviceCreateInfo {
+            // here we pass the desired queue family to use by index
+            queue_create_infos: vec![QueueCreateInfo {
+                queue_family_index,
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+    )
+    .expect("failed to create device");
 
-fn update(app: &App, model: &mut Model, update: Update) {
-    let dt = update.since_last.as_secs_f32();
-    let time = update.since_start.as_secs_f32();
+    let queue = queues.next().unwrap();
 
-    //let force = Vec3::new(time.cos(), time.cos(), time.cos());
-
-    model.particle_system.update(dt);
-}
-
-fn view(app: &App, model: &Model, frame: Frame) {
-    let draw = app.draw();
-
-    for particle in &model.particle_system.particles {
-        draw.ellipse()
-            .color(particle.color)
-            .radius(particle.radius)
-            .x_y(particle.position.x, particle.position.y);
-    }
-
-    draw.background().color(BLACK);
-    draw.to_frame(app, &frame).unwrap();
+    let devide = device.clone(); // let's continue tomorrow... :D
 }
