@@ -14,7 +14,6 @@ I might try to build something similar in Wgpu as well, to get familiar with the
 
 Sounds like a plan. Let's go!
 
-### Note:
+### Note
 
 After digging, I found out that the tutorial uses the lib `vulkanalia` instead of `vulkano`. It would make the boilerplate required to reach to my "Hello Triangle" much higher, so I will stick with `vulkano` and try to find another resource.
-
