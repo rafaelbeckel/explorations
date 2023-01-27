@@ -1,6 +1,6 @@
 [package]
-name = "_template"
-description = "A simple mesmerizing particle system. The second of many to come."
+name = "Particle System 2"
+description = "My first contact with Vulkan in Rust. Let's try pushing the limits to millions of particles now."
 authors = ["Rafael Beckel <beckel+nannou@vista.art>"]
 version = "0.1.0"
 edition = "2021"
