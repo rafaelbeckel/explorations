@@ -8,4 +8,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nannou = "0.18"
+vulkano = "0.32"
+
+[profile.dev]
+opt-level = 1
