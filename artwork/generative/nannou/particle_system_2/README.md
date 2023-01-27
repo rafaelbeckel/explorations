@@ -13,3 +13,8 @@ I will start by follwing the tutorial, learn Vulkan and Vulkano first (the Vulka
 I might try to build something similar in Wgpu as well, to get familiar with the graphics ecosystem in Rust.
 
 Sounds like a plan. Let's go!
+
+### Note:
+
+After digging, I found out that the tutorial uses the lib `vulkanalia` instead of `vulkano`. It would make the boilerplate required to reach to my "Hello Triangle" much higher, so I will stick with `vulkano` and try to find another resource.
+
