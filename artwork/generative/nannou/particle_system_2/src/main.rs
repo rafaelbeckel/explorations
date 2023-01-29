@@ -31,9 +31,21 @@ struct MyStruct {
 fn main() {
     let library = VulkanLibrary::new().expect("no local Vulkan library");
 
+    // let extensions = InstanceExtensions {
+    //     khr_surface: true,
+    //     khr_xlib_surface: true,
+    //     ..Default::default()
+    // };
+
     // Create the Vulkan instance with default values
-    let instance =
-        Instance::new(library, InstanceCreateInfo::default()).expect("failed to create instance");
+    let instance = Instance::new(
+        library,
+        InstanceCreateInfo {
+            enumerate_portability: true, // Necessary for MacOS
+            ..Default::default()
+        },
+    )
+    .expect("failed to create instance");
 
     // The machine may have multiple devices that support Vulkan. Here we just get the first one from our instance.
     let physical = instance
