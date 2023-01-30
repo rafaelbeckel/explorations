@@ -1,5 +1,10 @@
 use bytemuck::{Pod, Zeroable};
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::command_buffer::allocator::{
+    CommandBufferAllocator, StandardCommandBufferAllocator,
+    StandardCommandBufferAllocatorCreateInfo,
+};
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferInfo};
 use vulkano::device::{Device, DeviceCreateInfo, QueueCreateInfo};
 use vulkano::instance::{Instance, InstanceCreateInfo};
 use vulkano::memory::allocator::StandardMemoryAllocator;
@@ -199,4 +204,84 @@ fn main() {
     let mut content = iter_buffer.write().unwrap();
     content[12] = 83; // this time `content` derefs to `[u8]`
     content[7] = 3;
+
+    // Example operation
+
+    // Now that we are familiar with devices, queues, and buffers,
+    // we are going to see how to ask the GPU to actually do something.
+
+    // What we are going to ask in this example is very simple:
+    // we will ask it to copy data from one buffer to another.
+
+    // Note: You can find the full source code of this chapter here:
+    // https://github.com/vulkano-rs/vulkano-www/blob/master/chapter_code/src/bin/buffer_creation.rs
+
+    let source_content: Vec<i32> = (0..64).collect(); // array with integers from 0 to 63
+    let source = CpuAccessibleBuffer::from_iter(
+        &memory_allocator,
+        BufferUsage {
+            transfer_src: true,
+            ..Default::default()
+        },
+        false,
+        source_content,
+    )
+    .expect("failed to create source buffer");
+
+    let destination_content: Vec<i32> = (0..64).map(|_| 0).collect(); // array of 64 zeros
+    let destination = CpuAccessibleBuffer::from_iter(
+        &memory_allocator,
+        BufferUsage {
+            transfer_dst: true,
+            ..Default::default()
+        },
+        false,
+        destination_content,
+    )
+    .expect("failed to create destination buffer");
+
+    // Command buffers
+
+    // In order to ask the GPU to perform an operation,
+    // we need to create a type of object that we haven't covered yet, the command buffer.
+
+    // With Vulkan and Vulkano you can't just execute commands one by one, as it would be too inefficient.
+    // Instead, we need to build a command buffer that contains a list of commands that we want to execute.
+
+    // You can create many command buffers and use them at different times during the program.
+    // They can have different uses and can do many different things.
+    // In this case, we are just going to create for the operation we are trying to achieve.
+
+    // Vulkan supports primary and secondary command buffers.
+    // Primary command buffers can be sent directly to the GPU while
+    // secondary command buffers allow you to store functionality that you can
+    // reuse multiple times in primary command buffers.
+
+    // We won't cover secondary command buffers here.
+
+    // > Note: Submitting a command to the GPU can take up to several hundred microseconds,
+    // > which is why we submit as many things as we can at once. OpenGL (Vulkan's predecessor)
+    // > allows you to execute commands one by one, but in reality implementations buffer commands
+    // > internally into command buffers. In other words, OpenGL automatically does what Vulkan requires
+    // > us to do manually. In practice, OpenGL's automatic buffering often causes more harm than good in
+    // > performance-critical applications.
+
+    // This also differs from the tutorial because of Vulkano's version
+    let commandbuffer_allocator = StandardCommandBufferAllocator::new(
+        device,
+        StandardCommandBufferAllocatorCreateInfo::default(),
+    );
+
+    let mut builder = AutoCommandBufferBuilder::primary(
+        &commandbuffer_allocator,
+        queue_family_index,
+        CommandBufferUsage::OneTimeSubmit,
+    )
+    .unwrap();
+
+    builder
+        .copy_buffer(CopyBufferInfo::buffers(source.clone(), destination.clone()))
+        .unwrap();
+
+    let command_buffer = builder.build().unwrap();
 }
