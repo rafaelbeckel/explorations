@@ -1,13 +1,13 @@
 use bytemuck::{Pod, Zeroable};
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
 use vulkano::command_buffer::allocator::{
-    CommandBufferAllocator, StandardCommandBufferAllocator,
-    StandardCommandBufferAllocatorCreateInfo,
+    StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo,
 };
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferInfo};
 use vulkano::device::{Device, DeviceCreateInfo, QueueCreateInfo};
 use vulkano::instance::{Instance, InstanceCreateInfo};
 use vulkano::memory::allocator::StandardMemoryAllocator;
+use vulkano::sync::{self, GpuFuture};
 use vulkano::VulkanLibrary;
 
 // Struct to initialize the Vulkan instance
@@ -205,7 +205,7 @@ fn main() {
     content[12] = 83; // this time `content` derefs to `[u8]`
     content[7] = 3;
 
-    // Example operation
+    // Example operation ____________________________________________________________
 
     // Now that we are familiar with devices, queues, and buffers,
     // we are going to see how to ask the GPU to actually do something.
@@ -240,8 +240,7 @@ fn main() {
     )
     .expect("failed to create destination buffer");
 
-    // Command buffers
-
+    // Command buffers ______________________________________________________________
     // In order to ask the GPU to perform an operation,
     // we need to create a type of object that we haven't covered yet, the command buffer.
 
@@ -268,20 +267,37 @@ fn main() {
 
     // This also differs from the tutorial because of Vulkano's version
     let commandbuffer_allocator = StandardCommandBufferAllocator::new(
-        device,
+        device.clone(),
         StandardCommandBufferAllocatorCreateInfo::default(),
     );
 
-    let mut builder = AutoCommandBufferBuilder::primary(
+    // Here we'll create a builder, add a copy command to it with copy_buffer,
+    // then turn that builder into an actual command buffer with .build().
+    // Like we saw in the buffers creation section, we call .clone() multiple times but we only clone Arcs.
+    let mut commandbuffer_builder = AutoCommandBufferBuilder::primary(
         &commandbuffer_allocator,
-        queue_family_index,
+        queue_family_index, // the queue family that the command buffer is going to run on
         CommandBufferUsage::OneTimeSubmit,
     )
     .unwrap();
 
-    builder
+    commandbuffer_builder
         .copy_buffer(CopyBufferInfo::buffers(source.clone(), destination.clone()))
         .unwrap();
 
-    let command_buffer = builder.build().unwrap();
+    let command_buffer = commandbuffer_builder.build().unwrap();
+
+    // One thing to notice is that the AutoCommandBufferBuilder::primary() method takes as parameter a queue family index.
+    // This identifies the queue family that the command buffer is going to run on.
+    // In this example we don't have much choice anyway (as we only use one queue and thus one queue family),
+    // but when you design a real program you have to be aware of this requirement.
+
+    // Submission and synchronization _______________________________________________
+    // The last step is to actually send the command buffer and execute it in the GPU.
+    // We can do that by synchronizing with the GPU, then executing the command buffer:
+    let _future = sync::now(device.clone())
+        .then_execute(queue.clone(), command_buffer)
+        .unwrap()
+        .flush()
+        .unwrap();
 }
