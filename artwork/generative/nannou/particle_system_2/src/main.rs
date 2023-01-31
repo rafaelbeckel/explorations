@@ -295,9 +295,38 @@ fn main() {
     // Submission and synchronization _______________________________________________
     // The last step is to actually send the command buffer and execute it in the GPU.
     // We can do that by synchronizing with the GPU, then executing the command buffer:
-    let _future = sync::now(device.clone())
+    let future = sync::now(device.clone())
         .then_execute(queue.clone(), command_buffer)
         .unwrap()
-        .flush()
+        .then_signal_fence_and_flush() // same as signal fence, and then flush
         .unwrap();
+
+    // No function in Vulkano immediately sends an operation to the GPU (with the exception of some low-level functions).
+    // Instead, sync::now() creates a new type of object called a future, that keeps alive all the resources
+    // that will be used by the GPU and represents the execution in time of the actual operations.
+
+    // The future returned by sync::now() is in a pending state and makes it possible to append the execution of other
+    // command buffers and operations. Only by calling .flush() are these operations all submitted at once,
+    // and they  actually start executing on the GPU.
+
+    // Using objects like this lets us build dependencies between operations and makes it possible to make an operation
+    // start only after a previous one is finished, while reducing the number of slow communication operations
+    // between the CPU and the GPU.
+
+    // Now we might be tempted to try to read the content of the destination buffer as demonstrated in the previously.
+    // However, because the CPU and GPU are now executing in parallel, calling destination.read() now may sometimes
+    // return an error because the buffer could still be in use by the GPU.
+
+    // In order to read the content of destination and make sure that our copy succeeded, we need to wait until the
+    // operation is complete. To do that, we need to program the GPU to send back a special signal that will make us
+    // know it has finished. This kind of signal is called a fence, and it lets us know whenever the GPU has reached
+    // a certain point of execution.
+
+    // Signaling a fence returns a future object called FenceSignalFuture, that has a special method .wait():
+    future.wait(None).unwrap(); // None is an optional timeout
+
+    // Only after this is done can we safely call destination.read() and check that our copy succeeded.
+    let src_content = source.read().unwrap();
+    let destination_content = destination.read().unwrap();
+    assert_eq!(&*src_content, &*destination_content);
 }
