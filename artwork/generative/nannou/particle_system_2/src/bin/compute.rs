@@ -1,15 +1,27 @@
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::command_buffer::allocator::{
+    StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo,
+};
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage};
+use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::{Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo};
 use vulkano::instance::{Instance, InstanceCreateInfo};
+use vulkano::memory::allocator::StandardMemoryAllocator;
 use vulkano::pipeline::{ComputePipeline, Pipeline, PipelineBindPoint};
 use vulkano::sync::{self, GpuFuture};
 
 fn main() {
     let library = vulkano::VulkanLibrary::new().expect("no local Vulkan library/DLL");
-    let instance =
-        Instance::new(library, InstanceCreateInfo::default()).expect("failed to create instance");
+    // Create the Vulkan instance with default values
+    let instance = Instance::new(
+        library,
+        InstanceCreateInfo {
+            enumerate_portability: true, // Necessary for MacOS
+            ..Default::default()
+        },
+    )
+    .expect("failed to create instance");
 
     let physical = instance
         .enumerate_physical_devices()
@@ -41,11 +53,12 @@ fn main() {
     .expect("failed to create device");
 
     let queue = queues.next().unwrap();
+    let memory_allocator = StandardMemoryAllocator::new_default(device.clone());
 
     // Introduction to compute operations
     let data_iter = 0..65536;
     let data_buffer = CpuAccessibleBuffer::from_iter(
-        device.clone(),
+        &memory_allocator,
         BufferUsage {
             storage_buffer: true,
             ..Default::default()
@@ -82,15 +95,23 @@ void main() {
     )
     .expect("failed to create compute pipeline");
 
+    let descriptorset_allocator = StandardDescriptorSetAllocator::new(device.clone());
     let layout = compute_pipeline.layout().set_layouts().get(0).unwrap();
+
     let set = PersistentDescriptorSet::new(
+        &descriptorset_allocator,
         layout.clone(),
         [WriteDescriptorSet::buffer(0, data_buffer.clone())], // 0 is the binding
     )
     .unwrap();
 
-    let mut builder = AutoCommandBufferBuilder::primary(
+    let commandbuffer_allocator = StandardCommandBufferAllocator::new(
         device.clone(),
+        StandardCommandBufferAllocatorCreateInfo::default(),
+    );
+
+    let mut builder = AutoCommandBufferBuilder::primary(
+        &commandbuffer_allocator,
         queue.queue_family_index(),
         CommandBufferUsage::OneTimeSubmit,
     )
