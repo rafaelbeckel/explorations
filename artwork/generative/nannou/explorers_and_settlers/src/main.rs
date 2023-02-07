@@ -150,6 +150,9 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     if app.elapsed_frames() % 10 == 0 {
         model.epoch += 1;
+
+        // @TODO update the agents
+        
     }
 }
 
