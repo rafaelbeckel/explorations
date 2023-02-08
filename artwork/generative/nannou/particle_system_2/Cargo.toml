@@ -11,6 +11,7 @@ edition = "2021"
 vulkano = "0.32"
 vulkano-shaders = "0.32"
 bytemuck = "1.12"
+image = "0.24.5"
 
 [profile.dev]
 opt-level = 1
