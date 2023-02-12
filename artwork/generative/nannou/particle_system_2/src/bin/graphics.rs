@@ -42,3 +42,68 @@
 
 // > Note: This explanation only covers the fundamentals of graphics pipelines.
 //   Graphics pipelines have tons of configurable options, plus additional optional shader stages.
+
+use bytemuck::{Pod, Zeroable};
+use vulkano::{
+    buffer::{BufferUsage, CpuAccessibleBuffer},
+    memory::allocator::StandardMemoryAllocator,
+};
+
+// The first step to describe a shape with vulkano is to create a struct named Vertex
+// (the actual name doesn't matter) whose purpose is to describe the properties of a
+// single vertex. Once this is done, the shape of our triangle is going to be a buffer
+// whose content is an array of three Vertex objects.
+#[repr(C)]
+#[derive(Default, Copy, Clone, Zeroable, Pod)]
+struct Vertex {
+    position: [f32; 2],
+}
+
+vulkano::impl_vertex!(Vertex, position);
+
+fn main() {
+    // Let's define a simple triangle
+    let vertex1 = Vertex {
+        position: [-0.5, -0.5],
+    };
+    let vertex2 = Vertex {
+        position: [0.0, 0.5],
+    };
+    let vertex3 = Vertex {
+        position: [0.5, -0.25],
+    };
+
+    let memory_allocator = StandardMemoryAllocator::new_default(device.clone());
+
+    // Now all we have to do is create a buffer that contains these three vertices.
+    // This buffer will be passed as a parameter when we start the drawing operation.
+    // A buffer that contains a collection of vertices is commonly named a vertex buffer.
+    let vertex_buffer = CpuAccessibleBuffer::from_iter(
+        &memory_allocator,
+        BufferUsage {
+            vertex_buffer: true, // we know the specific use of this buffer is for storing vertices.
+            ..Default::default()
+        },
+        false,
+        vec![vertex1, vertex2, vertex3].into_iter(),
+    )
+    .unwrap();
+
+    // > Note: Vertex buffers are not special in any way. The term vertex buffer indicates the way
+    // the programmer intends to use the buffer, and it is not a property of the buffer.
+
+    mod vs {
+        vulkano_shaders::shader! {
+            ty: "vertex",
+            src: "
+                #version 450
+
+                layout(location = 0) in vec2 position;
+
+                void main() {
+                    gl_Position = vec4(position, 0.0, 1.0);
+                }
+            "
+        }
+    }
+}
