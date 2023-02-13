@@ -397,7 +397,7 @@ fn main() {
     builder
         .begin_render_pass(
             RenderPassBeginInfo {
-                clear_values: vec![Some([0.5, 0.5, 0.5, 1.0].into())],
+                clear_values: vec![Some([0.1, 0.1, 0.1, 1.0].into())],
                 ..RenderPassBeginInfo::framebuffer(framebuffer.clone())
             },
             SubpassContents::Inline,
