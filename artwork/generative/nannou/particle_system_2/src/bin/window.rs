@@ -1,10 +1,4 @@
-// Let's do the last part of the tutorial now.
-
-// For now, I just copied the graphics.rs file to hold the boilerplate.
-// I'll change this as needed as the tutorial goes.
-
 use bytemuck::{Pod, Zeroable};
-use image::{ImageBuffer, Rgba};
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{
@@ -28,6 +22,12 @@ use vulkano::{
     render_pass::{Framebuffer, FramebufferCreateInfo, Subpass},
     sync::{self, GpuFuture},
 };
+use vulkano_win::VkSurfaceBuild;
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::{Window, WindowBuilder},
+};
 
 // The first step to describe a shape with vulkano is to create a struct named Vertex
 // (the actual name doesn't matter) whose purpose is to describe the properties of a
@@ -45,14 +45,39 @@ vulkano::impl_vertex!(Vertex, position);
 
 fn main() {
     let library = vulkano::VulkanLibrary::new().expect("no local Vulkan library/DLL");
+
+    // We add this to the instance to enable rendering in a Window.
+    // Window management is not part of Vulkan or Vulkano, so we need to use an extension.
+    let required_extensions = vulkano_win::required_extensions(&library);
+
     let instance = Instance::new(
         library,
         InstanceCreateInfo {
             enumerate_portability: true, // Necessary for MacOS
+            enabled_extensions: required_extensions,
             ..Default::default()
         },
     )
     .expect("failed to create instance");
+
+    // For drawing to the window, we created an object called surface.
+    // The surface is a cross-platform abstraction over the actual window object
+    // that vulkano can use for rendering.
+    let event_loop = EventLoop::new();
+    let surface = WindowBuilder::new()
+        .build_vk_surface(&event_loop, instance.clone())
+        .unwrap();
+
+    // As for the window itself, it can be retrieved from the surface like this:
+    let window = surface.object().unwrap().downcast_ref::<Window>().unwrap();
+
+    // Which you can use to manipulate and change its default properties:
+    window.set_title("Hello Window!");
+
+    // To keep the window open, we use the event loop.
+    // It is typically located at the end of the main function, so scroll down to take a look at it.
+
+    // The rest of the body is from the previous graphics tutorial (for now).
 
     let physical = instance
         .enumerate_physical_devices()
@@ -116,9 +141,6 @@ fn main() {
         position: [0.5, -0.25],
     };
 
-    // Now all we have to do is create a buffer that contains these three vertices.
-    // This buffer will be passed as a parameter when we start the drawing operation.
-    // A buffer that contains a collection of vertices is commonly named a vertex buffer.
     let vertex_buffer = CpuAccessibleBuffer::from_iter(
         &memory_allocator,
         BufferUsage {
@@ -130,17 +152,10 @@ fn main() {
     )
     .unwrap();
 
-    // > Note: Vertex buffers are not special in any way. The term vertex buffer indicates the way
-    // the programmer intends to use the buffer, and it is not a property of the buffer.
-
     // The vertex shader:
     mod vs {
         vulkano_shaders::shader! {
             ty: "vertex",
-
-            // The layout definition declares that each vertex has an attribute named position and of type vec2.
-            // This corresponds to the definition of the Vertex struct we created.
-            // We also define a single output named out_color for the vertex color.
             src: "
                 #version 450
 
@@ -162,19 +177,10 @@ fn main() {
         }
     }
 
-    // After the vertex shader has run on each vertex, the next step that the GPU performs
-    // is to determine which pixels of the target image are within the shape of the triangle.
-    // Only these pixels will be modified on the final image.
-
     // The fragment shader:
     mod fs {
         vulkano_shaders::shader! {
             ty: "fragment",
-
-            // The layout definition declares a single output named f_color.
-            // Vulkan gives you the possibility to draw to multiple images at once,
-            // which is why we need to declare each output and its type.
-            // Drawing to multiple images at once is an advanced topic that isn't covered here.
             src: "
                 #version 450
 
@@ -189,34 +195,11 @@ fn main() {
         }
     }
 
-    // The fragment shader runs on each pixel covered by the shape from the vertex shader.
-
     let vs = vs::load(device.clone()).expect("failed to create shader module");
     let fs = fs::load(device.clone()).expect("failed to create shader module");
 
-    // Render Passes:
-    // In order to fully optimize and parallelize command execution, we can't just ask the GPU to
-    // draw a shape whenever we want. Instead we first have to enter a special "rendering mode" by
-    // entering what is called a render pass. We can only draw when we have entered a render pass.
-
-    // The term "render pass" describes two things:
-    // - It designates the "rendering mode" we have to enter before we can add drawing commands to a command buffer.
-    // - It also designates a kind of object that describes this rendering mode.
-
-    // For the moment, the only thing we want to do is draw some color to a single image.
-    // This is the most simple case possible, and we only need to provide two things to a render pass:
-    // the format of the image, and the fact that we don't use multisampling (which is an anti-aliasing technique).
-
-    // More complex games can use render passes in very complex ways, with multiple subpasses and multiple attachments,
-    // and with various micro-optimizations. Vulkano's API is suitable for both the simple cases and the complex usages,
-    // which is why it may look complex at first.
-
     let render_pass = vulkano::single_pass_renderpass!(
         device.clone(),
-
-        // A render pass is made of attachments and passes.
-        // Here we declare one attachment whose name is color (the name is arbitrary),
-        // and one pass that will use color as its single output.
         attachments: {
             color: {
                 load: Clear, // Indicates that we want the GPU to clear the image when entering the render pass (i.e. fill it with a single color)
@@ -232,20 +215,6 @@ fn main() {
     )
     .unwrap();
 
-    // Note: It is possible to create temporary images whose content is only relevant inside of a render pass,
-    // in which case it is optimal to use store: DontCare instead of store: Store.
-
-    // Frame Buffer:
-    // A render pass only describes the format and the way we load and store the image we are going to draw upon.
-    // It is enough to initialize all the objects we need.
-
-    // But before we can draw, we also need to indicate the actual list of attachments.
-    // This is done by creating a framebuffer.
-
-    // Creating a framebuffer is typically done as part of the rendering process.
-    // It is not a bad idea to keep the framebuffer objects alive between frames, but it won't
-    // kill your performance to create and destroy a few framebuffer objects during some frames.
-
     let view = ImageView::new_default(image.clone()).unwrap();
     let framebuffer = Framebuffer::new(
         render_pass.clone(),
@@ -256,54 +225,6 @@ fn main() {
     )
     .unwrap();
 
-    // We are now ready the enter drawing mode!
-
-    // This is done by calling the begin_render_pass function on the command buffer builder.
-    // This function takes as parameter the framebuffer, a enum, and a Vec that contains the colors to fill
-    // the attachments with. Since we have only one single attachment, this Vec contains only one element.
-
-    // Clearing our attachment has exactly the same effect as the clear_color_image function we covered previously,
-    // except that this time it is done by the rendering engine.
-
-    // The enum passed as second parameter describes whether we are going to directly invoke draw commands or use
-    // secondary command buffers instead. Secondary command buffers are a more advanced topic.
-    // Be we are using only direct commands, we will leave it as ::Inline
-
-    // As a demonstration, let's just enter a render pass and leave it immediately after:
-
-    /*
-        let commandbuffer_allocator = StandardCommandBufferAllocator::new(
-            device.clone(),
-            StandardCommandBufferAllocatorCreateInfo::default(),
-        );
-
-        let mut builder = AutoCommandBufferBuilder::primary(
-            &commandbuffer_allocator,
-            queue.queue_family_index(),
-            CommandBufferUsage::OneTimeSubmit,
-        )
-        .unwrap();
-
-        builder
-            .begin_render_pass(
-                RenderPassBeginInfo {
-                    clear_values: vec![Some([0.0, 0.0, 1.0, 1.0].into())],
-                    ..RenderPassBeginInfo::framebuffer(framebuffer.clone())
-                },
-                SubpassContents::Inline,
-            )
-            .unwrap()
-            .end_render_pass()
-            .unwrap();
-    */
-
-    // The graphics pipeline:
-    // Just like we had to create a compute pipeline in order to perform a compute operation,
-    // we have to create a graphics pipeline before we perform a draw operation.
-
-    // When we draw, we have the possibility to draw only to a specific rectangle of the screen called a viewport.
-    // The borders of the viewport will map to the -1.0 and 1.0 logical coordinates that we covered in the vertex
-    // input section of the guide. Any part of the shape that ends up outside of this rectangle will be discarded.
     let viewport = Viewport {
         origin: [0.0, 0.0],
         dimensions: [1024.0, 1024.0],
@@ -327,20 +248,6 @@ fn main() {
         // Now that everything is specified, we call `build`.
         .build(device.clone())
         .unwrap();
-
-    // The state ViewportState::viewport_fixed_scissor_irrelevant() configures the builder so that we use one
-    // specific viewport, and that the state of this viewport is fixed. This makes it not possible to change
-    // the viewport for each draw command, but adds more performance. Because we are drawing only one image
-    // and not changing the viewport between draws, this is the optimal approach. If you wanted to draw to
-    // another image of a different size, you would have to create a new pipeline object. Another approach
-    // would be to use a dynamic viewport, where you would pass your viewport in the command buffer instead.
-
-    // Note: If you configure multiple viewports, you can use geometry shaders to choose which viewport the
-    // shape is going to be drawn to. This topic isn't covered here.
-
-    // Drawing:
-    // Now that we have all the ingredients, it is time to bind everything and insert a draw call inside of our render pass.
-    // To draw the triangle, we need to pass the pipeline, the vertex_buffer and the actual draw command:
 
     let commandbuffer_allocator = StandardCommandBufferAllocator::new(
         device.clone(),
@@ -383,9 +290,14 @@ fn main() {
         .unwrap();
     future.wait(None).unwrap();
 
-    let buffer_content = buffer.read().unwrap();
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
-    image.save("hello_triangle.png").unwrap();
-
-    println!("Everything succeeded!");
+    // The event loop allows us to handle events such as window resizing, mouse movement, etc.
+    event_loop.run(|event, _, control_flow| match event {
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => {
+            *control_flow = ControlFlow::Exit;
+        }
+        _ => (),
+    });
 }
