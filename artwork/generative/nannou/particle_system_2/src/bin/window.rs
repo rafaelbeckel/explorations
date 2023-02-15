@@ -26,10 +26,10 @@ use vulkano::{
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
     shader::ShaderModule,
     swapchain::{
-        self, AcquireError, PresentInfo, Surface, Swapchain, SwapchainCreateInfo,
-        SwapchainCreationError, SwapchainPresentInfo,
+        self, AcquireError, Surface, Swapchain, SwapchainCreateInfo, SwapchainCreationError,
+        SwapchainPresentInfo,
     },
-    sync::{self, FlushError, GpuFuture},
+    sync::{self, FenceSignalFuture, FlushError, GpuFuture},
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
@@ -385,6 +385,10 @@ fn main() {
     let mut window_resized = false;
     let mut recreate_swapchain = false;
 
+    let frames_in_flight = images.len();
+    let mut fences: Vec<Option<Arc<FenceSignalFuture<_>>>> = vec![None; frames_in_flight];
+    let mut previous_fence_index = 0;
+
     // The event loop allows us to handle events such as window resizing, mouse movement, etc.
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -463,15 +467,15 @@ fn main() {
             }
 
             // The next step is to create the future that will be submitted to the GPU:
-            let execution = sync::now(device.clone())
-                .join(acquire_future)
-                .then_execute(queue.clone(), command_buffers[image_index as usize].clone())
-                .unwrap()
-                .then_swapchain_present(
-                    queue.clone(),
-                    SwapchainPresentInfo::swapchain_image_index(swapchain.clone(), image_index),
-                )
-                .then_signal_fence_and_flush();
+            // let execution = sync::now(device.clone())
+            //     .join(acquire_future)
+            //     .then_execute(queue.clone(), command_buffers[image_index as usize].clone())
+            //     .unwrap()
+            //     .then_swapchain_present(
+            //         queue.clone(),
+            //         SwapchainPresentInfo::swapchain_image_index(swapchain.clone(), image_index),
+            //     )
+            //     .then_signal_fence_and_flush();
 
             // Like we did in the other examples, we start by synchronizing.
             // However, the command buffer can't be executed immediately, as it needs to wait for the image to
@@ -484,17 +488,92 @@ fn main() {
             // the image is ready for display. Don't forget to add a fence and flush the future.
 
             // We are now doing more than just executing a command buffer, so let's do a bit of error handling:
-            match execution {
-                Ok(future) => {
-                    future.wait(None).unwrap(); // wait for the GPU to finish
+            // match execution {
+            //     Ok(future) => {
+            //         future.wait(None).unwrap(); // wait for the GPU to finish
+            //     }
+            //     Err(FlushError::OutOfDate) => {
+            //         recreate_swapchain = true;
+            //     }
+            //     Err(e) => {
+            //         println!("Failed to flush future: {:?}", e);
+            //     }
+            // }
+
+            // This commented code works, but it's not optiomal.
+            // Below we have the same implementation, but using frames in flight.
+
+            // Frames in flight: executing instructions parallel to the GPU
+            // Currently, the CPU waits between frames for the GPU to finish, which is somewhat inefficient.
+            // What we are going to do now is to implement the functionality of frames in flight, allowing
+            // the CPU to start processing new frames while the GPU is working on older ones.
+
+            // To do that, we need to save the created fences and reuse them later.
+            // Each stored fence will correspond to a new frame that is being processed in advance.
+            // You can do it with only one fence (check Vulkano's triangle example if you want to do something like that).
+            // However, here we will use multiple fences (likewise multiple frames in flight), which will make easier
+            // for you implement any other synchronization technique you want.
+
+            // Because each fence belongs to a specific future, we will actually store the futures as we create them,
+            // which will automatically hold each of their specific resources. We won't need to synchronize each frame,
+            // as we can just join with the previous frames (as all of the operations should happen continuously, anyway).
+
+            // Note: Here we will use fence and future somewhat interchangeably, as each fence corresponds to a future
+            // and vice versa. Each time we mention a fence, think of it as a future that incorporates a fence.
+
+            // In this example we will, for simplicity, correspond each of our fences to one image, making us able to
+            // use all of the existing command buffers at the same time without worrying much about what resources are
+            // used in each future. If you want something different, the key is to make sure each future use resources
+            // that are not already in use (this includes images and command buffers).
+
+            // Wait for the fence related to this image to finish.
+            // Normally this would be the oldest fence, that most likely have already finished.
+            if let Some(image_fence) = &fences[image_index as usize] {
+                image_fence.wait(None).unwrap();
+            }
+
+            // Join with the future from the previous frame, so that we only need to synchronize if the future doesn't already exist:
+            let previous_future = match fences[previous_fence_index].clone() {
+                // Create a NowFuture
+                None => {
+                    let mut now = sync::now(device.clone());
+
+                    // Manually frees all unused resources (which could still be there because of an error)
+                    now.cleanup_finished();
+
+                    // Stores our futures in the heap, as they may have different sizes
+                    now.boxed()
                 }
+                // Use the existing FenceSignalFuture
+                Some(fence) => fence.boxed(),
+            };
+
+            // Now that we have the previous_future, we can join and create a new one as usual:
+            let future = previous_future
+                .join(acquire_future)
+                .then_execute(queue.clone(), command_buffers[image_index as usize].clone())
+                .unwrap()
+                .then_swapchain_present(
+                    queue.clone(),
+                    SwapchainPresentInfo::swapchain_image_index(swapchain.clone(), image_index),
+                )
+                .then_signal_fence_and_flush();
+
+            // And then substitute the old (obsolete) fence in the error handling:
+            fences[image_index as usize] = match future {
+                Ok(value) => Some(Arc::new(value)),
                 Err(FlushError::OutOfDate) => {
                     recreate_swapchain = true;
+                    None
                 }
                 Err(e) => {
                     println!("Failed to flush future: {:?}", e);
+                    None
                 }
-            }
+            };
+
+            // Don't forget to set previous_fence_index for the next frame:
+            previous_fence_index = image_index as usize;
         }
         _ => (),
     });
