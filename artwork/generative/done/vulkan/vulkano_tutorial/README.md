@@ -1,4 +1,6 @@
-# Particle System 2
+# Particle System 2 (Actually Vulkano Tutorial)
+
+To run the examples, use `cargo run --bin <example_name>`. They're all in the `src/bin` folder.
 
 ## January 27th, 2023
 
@@ -48,3 +50,5 @@ Imagine:
 I have finished the tutorial, and I have all the boilerplate in place and a triangle in the screen.
 
 Next step is to start working on the particle system.
+
+#### Continues on particle_system_2.md
