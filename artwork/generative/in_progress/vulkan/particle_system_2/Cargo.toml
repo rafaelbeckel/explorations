@@ -1,0 +1,19 @@
+[package]
+name = "particle_system_2"
+description = "My first contact with Vulkan in Rust. Let's try pushing the limits to millions of particles now."
+authors = ["Rafael Beckel <beckel+nannou@vista.art>"]
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+vulkano = "0.32"
+vulkano-shaders = "0.32"
+vulkano-win = "0.32"
+bytemuck = "1.12"
+image = "0.24"
+winit = "0.27"
+
+[profile.dev]
+opt-level = 1
