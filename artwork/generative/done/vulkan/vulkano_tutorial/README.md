@@ -44,7 +44,6 @@ Imagine:
         - For example, a 4K image would produce about 8 million particles, each colored with a pixel of the image.
     - The first version can have a pre-defined image, but we could let the user choose any image or maybe a video.
 
-
 ### Update February 15th, 2023
 
 I have finished the tutorial, and I have all the boilerplate in place and a triangle in the screen.
