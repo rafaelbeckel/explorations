@@ -40,13 +40,14 @@ use winit::{
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, Zeroable, Pod)]
-struct Vertex {
+struct Particle {
     position: [f32; 2],
+    velocity: [f32; 2],
+    color: [f32; 3],
 }
 
-vulkano::impl_vertex!(Vertex, position);
+vulkano::impl_vertex!(Particle, position, velocity, color);
 
-// The vertex shader:
 mod vs {
     vulkano_shaders::shader! {
         ty: "vertex",
@@ -54,7 +55,6 @@ mod vs {
     }
 }
 
-// The fragment shader:
 mod fs {
     vulkano_shaders::shader! {
         ty: "fragment",
@@ -62,50 +62,34 @@ mod fs {
     }
 }
 
-// Function to select the best physical device for our needs.
-// In the other examples, we just picked the first one.
 fn select_physical_device(
     instance: &Arc<Instance>,
     surface: &Arc<Surface>,
     device_extensions: &DeviceExtensions,
 ) -> (Arc<PhysicalDevice>, u32) {
     instance
-        // We enumerate devices as usual, but now we filter only the ones that supports the required extensions
         .enumerate_physical_devices()
         .expect("could not enumerate devices")
         .filter(|p| p.supported_extensions().contains(&device_extensions))
-        // Some devices that passed the test may not have the needed queue family(ies) to present images to the surface
-        // or even support graphical operations. So, we are going to filter them too and at the same time select the
-        // first queue family that is suitable:
         .filter_map(|p| {
             p.queue_family_properties()
                 .iter()
                 .enumerate()
-                // Find the first first queue family that is suitable. If none is found, `None`
-                // is returned to `filter_map`, which disqualifies this physical device.
                 .position(|(i, q)| {
                     q.queue_flags.graphics && p.surface_support(i as u32, &surface).unwrap_or(false)
                 })
                 .map(|q| (p, q as u32))
         })
-        // All the physical devices that pass the filters above are suitable for the application.
-        // However, not every device is equal, some are preferred over others. Now, we assign each
-        // physical device a score, and pick the device with the lowest ("best") score.
         .min_by_key(|(p, _)| match p.properties().device_type {
             PhysicalDeviceType::DiscreteGpu => 0,
             PhysicalDeviceType::IntegratedGpu => 1,
             PhysicalDeviceType::VirtualGpu => 2,
             PhysicalDeviceType::Cpu => 3,
-
-            // Note that there exists `PhysicalDeviceType::Other`, however,
-            // `PhysicalDeviceType` is a non-exhaustive enum. Thus, one should
-            // match wildcard `_` to catch all unknown device types.
             _ => 4,
         })
         .expect("no device available")
 }
 
-// We moved the creation of the render pass to a function to make it easier to read.
 fn get_render_pass(device: Arc<Device>, swapchain: &Arc<Swapchain>) -> Arc<RenderPass> {
     vulkano::single_pass_renderpass!(
         device.clone(),
@@ -113,7 +97,7 @@ fn get_render_pass(device: Arc<Device>, swapchain: &Arc<Swapchain>) -> Arc<Rende
             color: {
                 load: Clear,
                 store: Store,
-                format: swapchain.image_format(),  // Sets the format the same as the swapchain
+                format: swapchain.image_format(),
                 samples: 1,
             }
         },
@@ -125,8 +109,6 @@ fn get_render_pass(device: Arc<Device>, swapchain: &Arc<Swapchain>) -> Arc<Rende
     .unwrap()
 }
 
-// When we only had one image, we only needed to create one framebuffer for it.
-// However, we now need to create a different framebuffer for each of the images.
 fn get_framebuffers(
     images: &[Arc<SwapchainImage>],
     render_pass: &Arc<RenderPass>,
@@ -147,7 +129,6 @@ fn get_framebuffers(
         .collect::<Vec<_>>()
 }
 
-// We also need to create a new command buffer for each image.
 fn get_command_buffers(
     device: &Arc<Device>,
     queue: &Arc<Queue>,
@@ -166,7 +147,7 @@ fn get_command_buffers(
             let mut builder = AutoCommandBufferBuilder::primary(
                 &commandbuffer_allocator,
                 queue.queue_family_index(),
-                CommandBufferUsage::MultipleSubmit, // don't forget to write the correct buffer usage
+                CommandBufferUsage::MultipleSubmit,
             )
             .unwrap();
 
@@ -191,7 +172,6 @@ fn get_command_buffers(
         .collect()
 }
 
-// We also moved the creation of the graphics pipeline to a function.
 fn get_pipeline(
     device: Arc<Device>,
     vs: Arc<ShaderModule>,
@@ -204,8 +184,6 @@ fn get_pipeline(
         .vertex_shader(vs.entry_point("main").unwrap(), ())
         .input_assembly_state(InputAssemblyState::new())
         .viewport_state(ViewportState::viewport_fixed_scissor_irrelevant([viewport]))
-        // You can also set the viewport to update dynamically, with a little cost in performance.
-        // .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
         .fragment_shader(fs.entry_point("main").unwrap(), ())
         .render_pass(Subpass::from(render_pass, 0).unwrap())
         .build(device)
@@ -215,59 +193,29 @@ fn get_pipeline(
 fn main() {
     let library = vulkano::VulkanLibrary::new().expect("no local Vulkan library/DLL");
 
-    // We add this to the instance to enable rendering in a Window.
-    // Window management is not part of Vulkan or Vulkano, so we need to use an extension.
-    let required_extensions = vulkano_win::required_extensions(&library);
-
     let instance = Instance::new(
         library,
         InstanceCreateInfo {
-            enumerate_portability: true, // Necessary for MacOS
-            enabled_extensions: required_extensions,
+            enumerate_portability: true,
+            enabled_extensions: vulkano_win::required_extensions(&library);,
             ..Default::default()
         },
     )
     .expect("failed to create instance");
 
-    // For drawing to the window, we created an object called surface.
-    // The surface is a cross-platform abstraction over the actual window object
-    // that vulkano can use for rendering.
     let event_loop = EventLoop::new();
     let surface = WindowBuilder::new()
         .build_vk_surface(&event_loop, instance.clone())
         .unwrap();
 
-    // As for the window itself, it can be retrieved from the surface like this:
     let window = surface.object().unwrap().downcast_ref::<Window>().unwrap();
+    window.set_title("Particle System 2 by Rafael Beckel");
 
-    // Which you can use to manipulate and change its default properties:
-    window.set_title("Hello Resizable Window with Triangle!");
-
-    // To keep the window open, we use the event loop.
-    // It is typically located at the end of the main function, so scroll down to take a look at it.
-
-    // Swapchains
-
-    // Since we are going to draw to a window which is ultimately on the screen, things are a bit special.
-    // If you were going to write directly to the window's surface, you would introduce tearing and other strange
-    // artifacts, because you would be updating an image that's already visible on a screen.
-
-    // To ensure that only complete images are shown, Vulkan uses what is called a swapchain.
-    // A swapchain is a group of one or multiple images, sometimes two images but most commonly three.
-    // If you have ever heard terms such as double buffering or triple buffering,
-    // it refers to having respectively two or three swapchain images.
-
-    // The idea behind a swapchain is to draw to one of its images while another one of these images is being
-    // shown on the screen. When we are done drawing we ask the swapchain to show the image we have just drawn to,
-    // and in return the swapchain gives us drawing access to another of its images.
-
-    // Checking for Swapchain support:
     let device_extensions = DeviceExtensions {
-        khr_swapchain: true, // This flag indicates the physical device supports swapchains.
+        khr_swapchain: true,
         ..DeviceExtensions::empty()
     };
 
-    // Note that now we filter the physical devices instead of picking the first one (see funcion above).
     let (physical, queue_family_index) =
         select_physical_device(&instance, &surface, &device_extensions);
 
@@ -278,7 +226,7 @@ fn main() {
                 queue_family_index,
                 ..Default::default()
             }],
-            enabled_extensions: device_extensions, // Notice that we pass the extensions here.
+            enabled_extensions: device_extensions,
             ..Default::default()
         },
     )
@@ -287,16 +235,10 @@ fn main() {
     let queue = queues.next().unwrap();
     let memory_allocator = StandardMemoryAllocator::new_default(device.clone());
 
-    // Creating the Swapchain:
-    // Swapchains have a lot of properties: the format and dimensions of their images, an optional transformation,
-    // a presentation mode, and so on. We have to specify a value for each of these parameters when we create the
-    // swapchain. Therefore, we have to query the capabilities of the surface.
-
     let surface_capabilities = physical
         .surface_capabilities(&surface, Default::default())
         .expect("failed to get surface capabilities");
 
-    // Of all of these properties, we only care about some of them:
     let dimensions = window.inner_size();
     let composite_alpha = surface_capabilities
         .supported_composite_alpha
@@ -310,19 +252,15 @@ fn main() {
             .0,
     );
 
-    // Combining everything, we can create the Swapchain:
     let (mut swapchain, images) = Swapchain::new(
         device.clone(),
         surface.clone(),
         SwapchainCreateInfo {
-            // This property defines how many buffers to use in the swapchain.
-            // It's good to set it at least one more than the minimal,
-            // to give a bit more freedom to the image queue.
             min_image_count: surface_capabilities.min_image_count + 1,
             image_format,
             image_extent: dimensions.into(),
             image_usage: ImageUsage {
-                color_attachment: true, // What the images are going to be used for
+                color_attachment: true,
                 ..Default::default()
             },
             composite_alpha,
@@ -331,10 +269,6 @@ fn main() {
     )
     .unwrap();
 
-    // For more info, check the Swapchain documentation:
-    // https://docs.rs/vulkano/0.32/vulkano/swapchain/index.html#swapchains
-
-    // The triangle is the same as in the last example
     let vertex1 = Vertex {
         position: [-0.5, -0.5],
     };
