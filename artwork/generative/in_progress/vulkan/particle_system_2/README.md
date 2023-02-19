@@ -55,3 +55,9 @@ The original hello triangle tutorial has been moved to the `vulkano_tutorial` fo
 I'll clean up this project to focus in the particle system. I copied the original particle system that I'll use as a base to the references folder. It's a C# project, but simple enough so I might be able to convert it to vulkano.
 
 The original simulates newtonian physics to attract the particles to the mouse. My implementation will be different, but for now I'll just implement it in Rust as-is.
+
+### Update February 19th, 2023
+
+After trying to convert the C# project to Rust, I realized I still did not build enough intuition about Vulkan and Vulkano. While Vulkano saved me some time with the boilerplate, it's hard to find resources and there is much magic going on. Doing a new hello triangle tutorial with a lower level implementation such as Ash or Vulkanalia might be beneficial because I can directly translate the more abundant C++ resources around to Rust.
+
+Understanding Vulkan in a lower level will enable me to eventually switch to Vulkano again, but with a better understanding of what's going on.
