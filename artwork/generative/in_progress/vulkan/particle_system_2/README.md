@@ -61,3 +61,7 @@ The original simulates newtonian physics to attract the particles to the mouse. 
 After trying to convert the C# project to Rust, I realized I still did not build enough intuition about Vulkan and Vulkano. While Vulkano saved me some time with the boilerplate, it's hard to find resources and there is much magic going on. Doing a new hello triangle tutorial with a lower level implementation such as Ash or Vulkanalia might be beneficial because I can directly translate the more abundant C++ resources around to Rust.
 
 Understanding Vulkan in a lower level will enable me to eventually switch to Vulkano again, but with a better understanding of what's going on.
+
+### Update February 20th, 2023
+
+Before starting with Vulkanalia, I'll try something quick with Vulkano and ChatGPT just for fun.

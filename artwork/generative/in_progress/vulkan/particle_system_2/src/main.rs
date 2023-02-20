@@ -8,6 +8,9 @@ use vulkano::{
         AutoCommandBufferBuilder, CommandBufferUsage, PrimaryAutoCommandBuffer,
         RenderPassBeginInfo, SubpassContents,
     },
+    descriptor_set::{
+        allocator::StandardDescriptorSetAllocator, PersistentDescriptorSet, WriteDescriptorSet,
+    },
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType},
         Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo,
@@ -21,7 +24,7 @@ use vulkano::{
             vertex_input::BuffersDefinition,
             viewport::{Viewport, ViewportState},
         },
-        GraphicsPipeline,
+        GraphicsPipeline, Pipeline, PipelineBindPoint,
     },
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
     shader::ShaderModule,
@@ -41,24 +44,23 @@ use winit::{
 #[repr(C)]
 #[derive(Default, Copy, Clone, Zeroable, Pod)]
 struct Particle {
-    position: [f32; 2],
-    velocity: [f32; 2],
-    color: [f32; 3],
+    position: [f32; 3],
+    velocity: [f32; 3],
 }
 
-vulkano::impl_vertex!(Particle, position, velocity, color);
+vulkano::impl_vertex!(Particle, position, velocity);
 
 mod vs {
     vulkano_shaders::shader! {
         ty: "vertex",
-        path: "src/shaders/old/vertex.glsl"
+        path: "src/shaders/particles.vert"
     }
 }
 
 mod fs {
     vulkano_shaders::shader! {
         ty: "fragment",
-        path: "src/shaders/old/fragment.glsl"
+        path: "src/shaders/particles.frag"
     }
 }
 
@@ -134,7 +136,8 @@ fn get_command_buffers(
     queue: &Arc<Queue>,
     pipeline: &Arc<GraphicsPipeline>,
     framebuffers: &Vec<Arc<Framebuffer>>,
-    vertex_buffer: &Arc<CpuAccessibleBuffer<[Vertex]>>,
+    vertex_buffer: &Arc<CpuAccessibleBuffer<[Particle]>>,
+    descriptor_set: &Arc<PersistentDescriptorSet>,
 ) -> Vec<Arc<PrimaryAutoCommandBuffer>> {
     let commandbuffer_allocator = StandardCommandBufferAllocator::new(
         device.clone(),
@@ -162,6 +165,12 @@ fn get_command_buffers(
                 .unwrap()
                 .bind_pipeline_graphics(pipeline.clone())
                 .bind_vertex_buffers(0, vertex_buffer.clone())
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Graphics,
+                    pipeline.layout().clone(),
+                    0,
+                    descriptor_set.clone(),
+                )
                 .draw(vertex_buffer.len() as u32, 1, 0, 0)
                 .unwrap()
                 .end_render_pass()
@@ -180,7 +189,7 @@ fn get_pipeline(
     viewport: Viewport,
 ) -> Arc<GraphicsPipeline> {
     GraphicsPipeline::start()
-        .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
+        .vertex_input_state(BuffersDefinition::new().vertex::<Particle>())
         .vertex_shader(vs.entry_point("main").unwrap(), ())
         .input_assembly_state(InputAssemblyState::new())
         .viewport_state(ViewportState::viewport_fixed_scissor_irrelevant([viewport]))
@@ -193,11 +202,13 @@ fn get_pipeline(
 fn main() {
     let library = vulkano::VulkanLibrary::new().expect("no local Vulkan library/DLL");
 
+    let required_extensions = vulkano_win::required_extensions(&library);
+
     let instance = Instance::new(
         library,
         InstanceCreateInfo {
             enumerate_portability: true,
-            enabled_extensions: vulkano_win::required_extensions(&library);,
+            enabled_extensions: required_extensions,
             ..Default::default()
         },
     )
@@ -269,15 +280,20 @@ fn main() {
     )
     .unwrap();
 
-    let vertex1 = Vertex {
-        position: [-0.5, -0.5],
-    };
-    let vertex2 = Vertex {
-        position: [0.0, 0.5],
-    };
-    let vertex3 = Vertex {
-        position: [0.5, -0.25],
-    };
+    let data = vec![
+        Particle {
+            position: [-0.5, -0.5, 0.0],
+            velocity: [0.0, 0.01, 0.0],
+        },
+        Particle {
+            position: [0.0, 0.5, 0.0],
+            velocity: [0.0, -0.01, 0.0],
+        },
+        Particle {
+            position: [0.5, -0.25, 0.0],
+            velocity: [-0.01, 0.01, 0.0],
+        },
+    ];
 
     let render_pass = get_render_pass(device.clone(), &swapchain);
     let framebuffers = get_framebuffers(&images, &render_pass);
@@ -288,7 +304,7 @@ fn main() {
             ..Default::default()
         },
         false,
-        vec![vertex1, vertex2, vertex3].into_iter(),
+        data.into_iter(),
     )
     .unwrap();
 
@@ -309,10 +325,26 @@ fn main() {
         viewport.clone(),
     );
 
+    let layout = pipeline.layout().set_layouts().get(0).unwrap();
+
+    let descriptorset_allocator = StandardDescriptorSetAllocator::new(device.clone());
+    let descriptor_set = PersistentDescriptorSet::new(
+        &descriptorset_allocator,
+        layout.clone(),
+        [WriteDescriptorSet::buffer(0, vertex_buffer.clone())], // 0 is the binding
+    )
+    .unwrap();
+
     // If you have set your pipeline to use a dynamic viewport, don't forget to then set the viewport
     // in the command buffers, by using .set_viewport(0, [viewport.clone()]).
-    let mut command_buffers =
-        get_command_buffers(&device, &queue, &pipeline, &framebuffers, &vertex_buffer);
+    let mut command_buffers = get_command_buffers(
+        &device,
+        &queue,
+        &pipeline,
+        &framebuffers,
+        &vertex_buffer,
+        &descriptor_set,
+    );
 
     // Because we set up a static viewport in the pipeline, we have
     // to recreate the command buffers every time the window is resized.
@@ -376,6 +408,7 @@ fn main() {
                         &new_pipeline,
                         &new_framebuffers,
                         &vertex_buffer,
+                        &descriptor_set,
                     );
                 }
             }
