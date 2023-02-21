@@ -48,8 +48,6 @@ struct Particle {
     velocity: [f32; 3],
 }
 
-vulkano::impl_vertex!(Particle, position, velocity);
-
 mod vs {
     vulkano_shaders::shader! {
         ty: "vertex",
@@ -189,7 +187,7 @@ fn get_pipeline(
     viewport: Viewport,
 ) -> Arc<GraphicsPipeline> {
     GraphicsPipeline::start()
-        .vertex_input_state(BuffersDefinition::new().vertex::<Particle>())
+        .vertex_input_state(BuffersDefinition::new())
         .vertex_shader(vs.entry_point("main").unwrap(), ())
         .input_assembly_state(InputAssemblyState::new())
         .viewport_state(ViewportState::viewport_fixed_scissor_irrelevant([viewport]))
@@ -280,7 +278,7 @@ fn main() {
     )
     .unwrap();
 
-    let data = vec![
+    let particles = vec![
         Particle {
             position: [-0.5, -0.5, 0.0],
             velocity: [0.0, 0.01, 0.0],
@@ -297,14 +295,16 @@ fn main() {
 
     let render_pass = get_render_pass(device.clone(), &swapchain);
     let framebuffers = get_framebuffers(&images, &render_pass);
+
     let vertex_buffer = CpuAccessibleBuffer::from_iter(
         &memory_allocator,
         BufferUsage {
             vertex_buffer: true, // we know the specific use of this buffer is for storing vertices.
+            storage_buffer: true,
             ..Default::default()
         },
         false,
-        data.into_iter(),
+        particles.into_iter(),
     )
     .unwrap();
 
