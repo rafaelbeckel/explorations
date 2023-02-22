@@ -1,4 +1,4 @@
-#version 430 core
+#version 450 core
 #define EPSILON 0.001
 const float DRAG_COEF = log(0.998) * 176.0; // log(0.70303228048)
 
