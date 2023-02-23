@@ -33,13 +33,13 @@ void main()
     const float green = clamp(0.08 * max(particle.Velocity.x, max(particle.Velocity.y, particle.Velocity.z)), 0.2, 0.5);
     const float blue = 0.7 - red;
 
-    //const array of positions for the triangle
-	const vec3 positions[3] = vec3[3](
-		vec3(1.f,1.f, 0.0f),
-		vec3(-1.f,1.f, 0.0f),
-		vec3(0.f,-1.f, 0.0f)
-	);
+    // //const array of positions for the triangle
+	// const vec3 positions[3] = vec3[3](
+	// 	vec3(1.f,1.f, 0.0f),
+	// 	vec3(-1.f,1.f, 0.0f),
+	// 	vec3(0.f,-1.f, 0.0f)
+	// );
 
     out_color = vec4(red, green, blue, 1.0);
-    gl_Position = vec4(positions[gl_VertexIndex], 1.0);
+    gl_Position = vec4(particle.Position, 1.0);
 }
