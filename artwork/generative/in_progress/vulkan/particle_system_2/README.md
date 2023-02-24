@@ -65,3 +65,7 @@ Understanding Vulkan in a lower level will enable me to eventually switch to Vul
 ### Update February 20th, 2023
 
 Before starting with Vulkanalia, I'll try something quick with Vulkano and ChatGPT just for fun.
+
+### Update February 24th, 2023
+
+I've been stuck for a few days. I'll try to find a longer time span this weekend, so I can dig deeper. The tutorials are helpful to avoid making me think about what to do today, as I have limited time per day to update it here, and sometimes one hour is not enough to make significant progress. I kind of lost track of the Vulkano SSBO thing. I'll try to get back to it, or start a new tutorial. As I said before, a lower level understanding of Vulkan would help me a lot.
