@@ -69,3 +69,17 @@ Before starting with Vulkanalia, I'll try something quick with Vulkano and ChatG
 ### Update February 24th, 2023
 
 I've been stuck for a few days. I'll try to find a longer time span this weekend, so I can dig deeper. The tutorials are helpful to avoid making me think about what to do today, as I have limited time per day to update it here, and sometimes one hour is not enough to make significant progress. I kind of lost track of the Vulkano SSBO thing. I'll try to get back to it, or start a new tutorial. As I said before, a lower level understanding of Vulkan would help me a lot.
+
+### Update February 25th, 2023
+
+Another push into cracking vertex buffers in graphics pipelines in Vulkano. They change the API frequently, and although I'm using the latest version, their examples in the repository are on master. After figuring this out, I have locked my version to 0.32.0 and resetted my local copy of the Vulkano repository to the same version (v0.32.0 tag).
+
+Their examples folder is really rich, and the true documentation. I'll try to allocate a vertex buffer now.
+
+My shader works with hardcoded coordinates in the shader itself, but when I try to read the vertex buffer, the data is empty. I think I might be able to fix it now with both versions locked.
+
+#### update 02:59
+
+I discovered the simple_particles example, which is kind of similar to what I want to do, but it uses compute shaders to calculate the partcles positions, instead of the GPU. The other C# example I have found is calculating particle physics in the vertex_shader instead.
+
+The plan for tomorrow is to try to implement the simple particles example with compute shaders, but with user input.
