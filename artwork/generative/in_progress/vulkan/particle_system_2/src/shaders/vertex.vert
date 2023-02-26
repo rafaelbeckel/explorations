@@ -26,7 +26,7 @@ out InOutVars
 
 void main()
 {
-    Particle particle = particleSSBO.Particles[gl_VertexID];
+    Particle particle = particleSSBO.Particles[gl_VertexIndex];
 
     const vec3 toMass = pointOfMass - particle.Position;
     
@@ -42,7 +42,7 @@ void main()
     particle.Velocity *= mix(1.0, exp(DRAG_COEF * dT), isRunning); // https://stackoverflow.com/questions/61812575/which-formula-to-use-for-drag-simulation-each-frame
     particle.Position += (dT * particle.Velocity + 0.5 * acceleration * dT * dT) * isRunning; // Euler integration
     particle.Velocity += acceleration * dT;
-    particleSSBO.Particles[gl_VertexID] = particle;
+    particleSSBO.Particles[gl_VertexIndex] = particle;
 
     const float red = 0.0045 * dot(particle.Velocity, particle.Velocity);
     const float green = clamp(0.08 * max(particle.Velocity.x, max(particle.Velocity.y, particle.Velocity.z)), 0.2, 0.5);
