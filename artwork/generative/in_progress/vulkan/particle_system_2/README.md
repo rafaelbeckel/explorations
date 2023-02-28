@@ -83,3 +83,7 @@ My shader works with hardcoded coordinates in the shader itself, but when I try 
 I discovered the simple_particles example, which is kind of similar to what I want to do, but it uses compute shaders to calculate the partcles positions, instead of the GPU. The other C# example I have found is calculating particle physics in the vertex_shader instead.
 
 The plan for tomorrow is to try to implement the simple particles example with compute shaders, but with user input.
+
+### No updates for a while (February 28th, 2023)
+
+Yeah, that's it. What the title says. There was no significant progress on the Particle system or Vulkan in the past three days. I have made this promise to myself to update this repository every day. So this is the update for today, just in case I can't commit anything until midnight.
