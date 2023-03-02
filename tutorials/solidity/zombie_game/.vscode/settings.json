@@ -1,0 +1,12 @@
+{
+    "workbench.colorCustomizations": {
+        "[Material Pro]": {
+            "terminal.ansiBlue": "#1c7bc9",
+            "editorInlayHint.background": "#86868643",
+            "editorInlayHint.foreground": "#000000"
+        },
+        "activityBar.background": "#1d370792",
+        "titleBar.activeBackground": "#609625aa",
+        "titleBar.activeForeground": "#101D06"
+    }
+}
