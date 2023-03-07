@@ -20,5 +20,8 @@ contract ZombieFactory {
         private
         view
         returns (uint256)
-    {}
+    {
+        uint256 rand = uint256(keccak256(abi.encodePacked(_str)));
+        return rand % dnaModulus;
+    }
 }
